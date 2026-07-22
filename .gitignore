@@ -1,9 +1,74 @@
-.next/
-node_modules/
-coverage/
-playwright-report/
-test-results/
+# Dependencies
+/node_modules/
+/.pnp/
+.pnp.*
+
+# Next.js and generated application output
+/.next/
+/out/
+/dist/
+/build/
+next-env.d.ts
+
+# Tests and coverage output
+/coverage/
+/playwright-report/
+/test-results/
+/blob-report/
+*.lcov
+
+# Logs and runtime diagnostics
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.pid
+*.pid.lock
+*.pem
+
+# Environment variables and local secrets
 .env*
 !.env.example
-.DS_Store
+
+# TypeScript and tool caches
 *.tsbuildinfo
+/.turbo/
+/.cache/
+/.eslintcache
+/.vercel/
+
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+/.idea/
+/.vscode/
+
+# Local Supabase project state and secrets
+/supabase/.temp/
+/supabase/.branches/
+/supabase/.env*
+
+# AI agents, skills, rules, workflows, and local tool instructions
+/AGENTS.md
+**/AGENTS.md
+**/SKILL.md
+**/CLAUDE.md
+**/GEMINI.md
+/.agents/
+/agent-library/
+/.codex/
+/.claude/
+/.cursor/
+/.windsurf/
+/.roo/
+/.specify/
+/.cursorrules
+/.windsurfrules
+/.github/copilot-instructions.md
+/.github/instructions/
+/figma-ui-agent-master-prompt-ko.md

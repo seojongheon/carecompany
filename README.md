@@ -67,3 +67,4 @@ Spec Kit은 명세·계획·작업 계약을 소유하고, Superpowers는 `tasks
 검증 기록과 화면 검토 결과는 각각
 [`frontend-final-verification.md`](docs/verification/frontend-final-verification.md),
 [`frontend-visual-review.md`](docs/verification/frontend-visual-review.md)에 있습니다.
+# carecompany
