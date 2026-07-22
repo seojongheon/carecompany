@@ -17,6 +17,9 @@ next-env.d.ts
 /blob-report/
 *.lcov
 
+# Local design exports and reference artifacts
+/design/
+
 # Logs and runtime diagnostics
 *.log
 npm-debug.log*
