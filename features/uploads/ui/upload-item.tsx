@@ -1,0 +1,9 @@
+import { CheckCircle2, LoaderCircle, RotateCcw, Trash2, TriangleAlert } from "lucide-react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+
+export interface UploadListItem { id: string; name: string; objectUrl: string; progress: number; status: "uploading" | "ready" | "failed"; error: string | null }
+
+export function UploadItem({ item, onRetry, onRemove }: { item: UploadListItem; onRetry(): void; onRemove(): void }) {
+  return <li className="rounded-xl border border-[var(--neutral-200)] p-4"><div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><Image src={item.objectUrl} alt={`${item.name} 미리보기`} width={72} height={54} unoptimized className="h-14 w-18 rounded-lg object-cover" /><div className="min-w-0"><p className="truncate font-semibold">{item.name}</p><p className="mt-1 flex items-center gap-1.5 text-sm text-[var(--neutral-500)]">{item.status === "uploading" ? <><LoaderCircle className="animate-spin" size={15} />업로드 중 {item.progress}%</> : item.status === "ready" ? <><CheckCircle2 className="text-green-700" size={15} />완료</> : <><TriangleAlert className="text-red-700" size={15} />실패</>}</p></div></div><div className="flex">{item.status === "failed" ? <Button variant="ghost" size="icon" aria-label={`${item.name} 다시 시도`} onClick={onRetry}><RotateCcw /></Button> : null}<Button variant="ghost" size="icon" aria-label={`${item.name} 제거`} onClick={onRemove}><Trash2 /></Button></div></div><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--neutral-100)]"><div className={item.status === "failed" ? "h-full bg-[var(--danger-600)]" : "h-full bg-[var(--brand-600)]"} style={{ width: `${item.progress}%` }} /></div>{item.error ? <p className="mt-2 text-sm text-[var(--danger-600)]">{item.error}</p> : null}</li>;
+}
