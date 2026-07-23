@@ -4,6 +4,5 @@ import { PublishChecklist } from "@/features/publishing/ui/publish-checklist";
 import { YouTubeManager } from "./youtube-manager";
 
 export function AdminPublishingWorkspace({ caseId }: { caseId: string }) {
-  return <div className="mx-auto mt-8 grid max-w-5xl gap-6"><UploadPanel caseId={caseId} /><PhotoManager caseId={caseId} /><YouTubeManager caseId={caseId} /><PublishChecklist caseId={caseId} /></div>;
+  return <div className="mx-auto mt-8 grid max-w-5xl gap-6"><UploadPanel caseId={caseId} stage="before" /><UploadPanel caseId={caseId} stage="after" /><PhotoManager caseId={caseId} /><YouTubeManager caseId={caseId} /><PublishChecklist caseId={caseId} /></div>;
 }
-

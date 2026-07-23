@@ -10,7 +10,8 @@ test.beforeEach(async ({ page }) => {
 test("admin opens directly and creates a restorable private draft", async ({ page }) => {
   await page.goto("/admin");
   await expect(page.getByRole("heading", { name: "관리자 대시보드" })).toBeVisible();
-  await page.goto("/admin/portfolio/new");
+  await page.goto("/admin/portfolio");
+  await page.getByRole("link", { name: "사례 추가" }).click();
   await page.getByLabel("사례 제목").fill("E2E 새 사례");
   await page.getByLabel("서비스").selectOption("service-bathroom");
   await page.getByLabel("표시 지역").fill("천안 서북구");

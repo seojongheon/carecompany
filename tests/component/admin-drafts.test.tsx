@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminDashboard } from "@/components/admin/admin-dashboard";
+import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { SEED_SNAPSHOT } from "@/features/portfolio/data/seed";
 import { LocalStoragePortfolioRepository } from "@/features/portfolio/repository/local-storage-portfolio-repository";
 import { PortfolioProvider } from "@/features/portfolio/repository/portfolio-provider";
@@ -21,6 +22,15 @@ describe("admin draft flows", () => {
     expect(screen.getByText("공개 사례").closest("article")).toHaveTextContent("16");
     await user.selectOptions(screen.getByLabelText("공개 상태"), "private");
     expect(screen.getAllByTestId("admin-case-row")).toHaveLength(4);
+  });
+
+  it("starts creation from case management instead of a separate dashboard or menu shortcut", () => {
+    const repository = new LocalStoragePortfolioRepository(localStorage, SEED_SNAPSHOT);
+    render(<PortfolioProvider repository={repository}><AdminDashboard /><AdminSidebar /><AdminCaseList /></PortfolioProvider>);
+
+    expect(screen.getByRole("link", { name: "사례 추가" })).toHaveAttribute("href", "/admin/portfolio/new");
+    expect(screen.queryByRole("link", { name: /새 사례/ })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "편집" })).not.toHaveLength(0);
   });
 
   it("validates required fields and creates a private draft", async () => {

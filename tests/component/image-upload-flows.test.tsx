@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { useState } from "react";
@@ -14,6 +14,7 @@ import { SITE_CONTENT_SEED_SNAPSHOT } from "@/features/site-content/model/seed";
 import { LocalStorageSiteContentRepository } from "@/features/site-content/repository/local-storage-site-content-repository";
 import { SiteContentProvider } from "@/features/site-content/repository/site-content-provider";
 import { HomeSections } from "@/components/site/home-sections";
+import { AdminPublishingWorkspace } from "@/features/portfolio/ui/admin-publishing-workspace";
 
 describe("ImageDropzone", () => {
   it("passes locally selected case images through the shared upload flow", async () => {
@@ -43,12 +44,29 @@ describe("ImageDropzone", () => {
     const repository = new LocalStoragePortfolioRepository(localStorage, SEED_SNAPSHOT);
     const draft = repository.listAdminCases({ status: "private" })[0];
     const file = new File(["case"], "dropped-case.jpg", { type: "image/jpeg" });
-    render(<PortfolioProvider repository={repository}><UploadPanel caseId={draft.id} /></PortfolioProvider>);
+    render(<PortfolioProvider repository={repository}><UploadPanel caseId={draft.id} stage="after" /></PortfolioProvider>);
 
-    fireEvent.drop(screen.getByTestId("case-image-dropzone"), { dataTransfer: { files: [file] } });
+    fireEvent.drop(screen.getByTestId("case-image-after-dropzone"), { dataTransfer: { files: [file] } });
 
     expect(await screen.findByText("dropped-case.jpg")).toBeInTheDocument();
     expect(screen.getByText("권장 1600 × 1200px · 4:3 · JPG 또는 WebP")).toBeInTheDocument();
+  });
+
+  it("separates before and after uploads and persists the selected stage", async () => {
+    const user = userEvent.setup();
+    const repository = new LocalStoragePortfolioRepository(localStorage, SEED_SNAPSHOT);
+    const draft = repository.listAdminCases({ status: "private" })[0];
+    render(<PortfolioProvider repository={repository}><AdminPublishingWorkspace caseId={draft.id} /></PortfolioProvider>);
+
+    await user.upload(screen.getByLabelText("작업 전 사진 파일 선택"), new File(["before"], "before.jpg", { type: "image/jpeg" }));
+    await user.upload(screen.getByLabelText("작업 후 사진 파일 선택"), new File(["after"], "after.jpg", { type: "image/jpeg" }));
+
+    expect(await screen.findByText("before.jpg")).toBeInTheDocument();
+    expect(await screen.findByText("after.jpg")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(repository.getAdminCaseById(draft.id)?.media.some(({ altText, stage }) => altText.includes("before.jpg") && stage === "before")).toBe(true);
+      expect(repository.getAdminCaseById(draft.id)?.media.some(({ altText, stage }) => altText.includes("after.jpg") && stage === "after")).toBe(true);
+    });
   });
 
   it("previews a locally selected landing hero image and preserves its alternative text in the draft", async () => {

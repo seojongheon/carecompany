@@ -1,12 +1,24 @@
 import { ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE_BYTES } from "./upload-constraints";
 
 export interface ImageUploadGuidance {
-  id: "case-image" | "landing-hero-image";
+  id: "case-image" | "case-image-before" | "case-image-after" | "landing-hero-image";
   label: string;
   inputLabel: string;
   recommendation: string;
   description: string;
   maxFiles: number;
+}
+
+export type CaseImageUploadStage = "before" | "after";
+
+export function getCaseImageGuidance(stage: CaseImageUploadStage): ImageUploadGuidance {
+  const label = stage === "before" ? "작업 전 사진" : "작업 후 사진";
+  return {
+    ...CASE_IMAGE_GUIDANCE,
+    id: `case-image-${stage}`,
+    label,
+    inputLabel: `${label} 파일 선택`,
+  };
 }
 
 const allowedFormats = ALLOWED_IMAGE_TYPES.includes("image/webp") ? "JPG 또는 WebP" : "JPG";

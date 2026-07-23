@@ -12,6 +12,7 @@ test("list click intercepts as quick view and Back restores the list", async ({ 
   await first.getByRole("link").click();
   await expect(page).toHaveURL(/\/portfolio\/aircon-cheonan-asan-/);
   await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByTestId("quick-view-stage-badge")).toHaveText("작업 후");
   await expect(page.getByRole("dialog")).toContainText("1 / 4");
   await page.getByRole("button", { name: "다음 사례" }).click();
   await expect(page).toHaveURL(/\/portfolio\/aircon-cheonan-asan-.*service=aircon/);
@@ -35,6 +36,7 @@ test("direct detail groups media and lazy-loads video", async ({ page }) => {
   await galleryButton.click();
   await expect(page.locator(".yarl__root")).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(1);
+  await expect(page.getByTestId("case-lightbox-stage-badge")).toHaveText("작업 전");
   await page.keyboard.press("Escape");
   await expect(page.locator(".yarl__root")).toHaveCount(0);
 });

@@ -17,8 +17,8 @@ describe("admin media and publishing", () => {
     const user = userEvent.setup();
     const repository = new LocalStoragePortfolioRepository(localStorage, SEED_SNAPSHOT);
     const draft = repository.listAdminCases({ status: "private" })[0];
-    render(<PortfolioProvider repository={repository}><UploadPanel caseId={draft.id} /></PortfolioProvider>);
-    const input = screen.getByLabelText("사례 사진 파일 선택");
+    render(<PortfolioProvider repository={repository}><UploadPanel caseId={draft.id} stage="after" /></PortfolioProvider>);
+    const input = screen.getByLabelText("작업 후 사진 파일 선택");
     const tooMany = Array.from({ length: 21 }, (_, index) => new File(["x"], `${index}.jpg`, { type: "image/jpeg" }));
     await user.upload(input, tooMany);
     expect(screen.getByRole("alertdialog")).toHaveTextContent("한 번에 최대 20장");

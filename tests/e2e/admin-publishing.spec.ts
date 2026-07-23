@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
 
 test("file selection completes locally and refresh shows fallback metadata", async ({ page }) => {
   await page.goto("/admin/portfolio/case-bathroom-5/edit");
-  await page.getByLabel("사진 선택", { exact: true }).setInputFiles({ name: "field.jpg", mimeType: "image/jpeg", buffer: Buffer.from("mock-image") });
+  await page.getByLabel("작업 후 사진 파일 선택", { exact: true }).setInputFiles({ name: "field.jpg", mimeType: "image/jpeg", buffer: Buffer.from("mock-image") });
   await expect(page.getByText("field.jpg")).toBeVisible();
   await expect(page.getByText("완료")).toBeVisible({ timeout: 5000 });
   await page.reload();
@@ -26,7 +26,7 @@ test("published case can be removed from customer selectors immediately", async 
 
 test("upload limits, organization, YouTube validation, and publication boundary work together", async ({ page }) => {
   await page.goto("/admin/portfolio/case-bathroom-5/edit");
-  const input = page.getByLabel("사진 선택", { exact: true });
+  const input = page.getByLabel("작업 후 사진 파일 선택", { exact: true });
   await input.setInputFiles(Array.from({ length: 21 }, (_, index) => ({ name: `${index}.jpg`, mimeType: "image/jpeg", buffer: Buffer.from("x") })));
   await expect(page.getByRole("alertdialog")).toContainText("한 번에 최대 20장");
   await page.getByRole("button", { name: "확인" }).click();
@@ -67,6 +67,7 @@ test("69 saved photos lock further selection", async ({ page }) => {
     localStorage.setItem(key, JSON.stringify(store));
   });
   await page.reload();
-  await expect(page.getByText(/현재 69 \/ 69장/)).toBeVisible();
-  await expect(page.getByLabel("사진 선택", { exact: true })).toBeDisabled();
+  await expect(page.getByText(/현재 전체 69 \/ 69장/).first()).toBeVisible();
+  await expect(page.getByLabel("작업 전 사진 파일 선택", { exact: true })).toBeDisabled();
+  await expect(page.getByLabel("작업 후 사진 파일 선택", { exact: true })).toBeDisabled();
 });

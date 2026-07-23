@@ -6,6 +6,7 @@ import { CaseDetail } from "@/features/portfolio/ui/case-detail";
 import { QuickView } from "@/features/portfolio/ui/quick-view";
 import { LocalStoragePortfolioRepository } from "@/features/portfolio/repository/local-storage-portfolio-repository";
 import { SEED_SNAPSHOT } from "@/features/portfolio/data/seed";
+import { CaseLightbox } from "@/components/portfolio/case-lightbox";
 
 describe("case exploration", () => {
   beforeEach(() => localStorage.clear());
@@ -44,9 +45,22 @@ describe("case exploration", () => {
     render(<QuickView items={items} initialSlug={items[0].slug} onClose={() => undefined} />);
 
     expect(screen.getByRole("dialog", { name: items[0].title })).toBeInTheDocument();
+    expect(screen.getByTestId("quick-view-stage-badge")).toHaveTextContent(items[0].coverMedia.stage === "before" ? "작업 전" : "작업 후");
     expect(screen.getByRole("button", { name: "이전 사례" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "다음 사례" }));
     expect(screen.getByRole("dialog", { name: items[1].title })).toBeInTheDocument();
     expect(screen.getByText("2 / 4")).toBeInTheDocument();
+  });
+
+  it("labels enlarged before and after photos in the top-right corner", () => {
+    const before = SEED_SNAPSHOT.media.find(({ stage }) => stage === "before")!;
+    const after = SEED_SNAPSHOT.media.find(({ stage }) => stage === "after")!;
+    const { rerender } = render(<CaseLightbox media={[before]} index={0} onClose={() => undefined} />);
+
+    expect(screen.getByTestId("case-lightbox-stage-badge")).toHaveTextContent("작업 전");
+    expect(screen.getByTestId("case-lightbox-stage-badge")).toHaveClass("right-4", "top-20");
+
+    rerender(<CaseLightbox media={[after]} index={0} onClose={() => undefined} />);
+    expect(screen.getByTestId("case-lightbox-stage-badge")).toHaveTextContent("작업 후");
   });
 });
