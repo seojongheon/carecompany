@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useSiteContent } from "../repository/site-content-provider";
+import { LandingHeroImageManager } from "./landing-hero-image-manager";
 
 export function SiteContentAdmin() {
   const { snapshot, updateDraft, saveDraft, publish, restoreVersion } = useSiteContent();
@@ -32,7 +33,7 @@ export function SiteContentAdmin() {
       <Field label="설명" wide><Textarea value={draft.home.description} onChange={(event) => updateDraft({ home: { ...draft.home, description: event.target.value } })} /></Field>
       <Field label="버튼 라벨"><Input value={draft.home.primaryCtaLabel} onChange={(event) => updateDraft({ home: { ...draft.home, primaryCtaLabel: event.target.value } })} /></Field>
       <Field label="버튼 링크"><Input value={draft.home.primaryCtaHref} onChange={(event) => updateDraft({ home: { ...draft.home, primaryCtaHref: event.target.value } })} /></Field>
-      <Field label="대표 이미지 대체 텍스트" wide><Input value={draft.home.heroImageAlt} onChange={(event) => updateDraft({ home: { ...draft.home, heroImageAlt: event.target.value } })} /></Field>
+      <LandingHeroImageManager home={draft.home} onChange={(home) => updateDraft({ home })} />
     </section> : null}
 
     {tab === "pricing" ? <section className="mt-6 rounded-2xl border bg-white p-5">

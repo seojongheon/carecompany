@@ -1,4 +1,4 @@
-export interface HomeContent { eyebrow: string; title: string; description: string; primaryCtaLabel: string; primaryCtaHref: string; heroImageAlt: string; heroAssetKey: string; }
+export interface HomeContent { eyebrow: string; title: string; description: string; primaryCtaLabel: string; primaryCtaHref: string; heroImageAlt: string; heroAssetKey: string; heroImageUrl?: string; heroImageStoragePath?: string; }
 export interface PriceItem { id: string; serviceKey: string; name: string; priceLabel: string; conditions: string[]; visible: boolean; sortOrder: number; }
 export interface ProcessStep { id: string; title: string; description: string; visible: boolean; sortOrder: number; }
 export interface AboutContent { title: string; description: string; values: Array<{ id: string; title: string; description: string }>; }
