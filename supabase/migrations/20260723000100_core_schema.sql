@@ -37,7 +37,7 @@ create table public.services (
   id uuid primary key default gen_random_uuid(),
   key text not null unique,
   name text not null,
-  slug text not null unique,
+  slug text not null default ('case-' || gen_random_uuid()::text) unique,
   summary text not null,
   description text not null,
   cover_asset_key text not null,

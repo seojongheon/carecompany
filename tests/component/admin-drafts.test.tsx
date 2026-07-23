@@ -43,11 +43,11 @@ describe("admin draft flows", () => {
     await user.type(screen.getByLabelText("사례 제목"), "새 에어컨 작업 사례");
     await user.selectOptions(screen.getByLabelText("서비스"), "service-aircon");
     await user.type(screen.getByLabelText("표시 지역"), "아산 배방읍");
-    await user.type(screen.getByLabelText("사례 경로"), "new-aircon-work");
+    expect(screen.queryByLabelText("사례 경로")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "비공개 초안 만들기" }));
 
     await waitFor(() => expect(repository.listAdminCases({ status: "private" })).toHaveLength(5));
-    expect(repository.getPublicCaseBySlug("new-aircon-work")).toBeNull();
+    expect(repository.listAdminCases({ status: "private" }).find(({ title }) => title === "새 에어컨 작업 사례")?.slug).toMatch(/^case-[0-9a-f-]{36}$/);
     expect(screen.getByRole("status")).toHaveTextContent("비공개 초안을 만들었습니다");
   });
 
@@ -58,6 +58,8 @@ describe("admin draft flows", () => {
     const draft = repository.listAdminCases({ status: "private" })[0];
     render(<PortfolioProvider repository={repository}><AdminCaseForm mode="edit" caseId={draft.id} autosaveMs={300} /></PortfolioProvider>);
 
+    expect(screen.getByLabelText("자동 생성된 사례 주소")).toHaveValue(`/portfolio/${draft.slug}`);
+    expect(screen.getByLabelText("자동 생성된 사례 주소")).toHaveAttribute("readonly");
     const title = screen.getByLabelText("사례 제목");
     await user.clear(title);
     await user.type(title, "자동 저장된 사례 제목");

@@ -15,7 +15,7 @@ test("admin opens directly and creates a restorable private draft", async ({ pag
   await page.getByLabel("사례 제목").fill("E2E 새 사례");
   await page.getByLabel("서비스").selectOption("service-bathroom");
   await page.getByLabel("표시 지역").fill("천안 서북구");
-  await page.getByLabel("사례 경로").fill("e2e-new-case");
+  await expect(page.getByLabel("사례 경로")).toHaveCount(0);
   await page.getByRole("button", { name: "비공개 초안 만들기" }).click();
   await expect(page.getByRole("status")).toContainText("비공개 초안");
   await page.reload();

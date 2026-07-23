@@ -20,7 +20,6 @@ function Probe() {
           createDraft({
             serviceId: "service-bathroom",
             title: "Provider 초안",
-            slug: `provider-draft-${snapshot.cases.length}`,
             locationDisplay: "천안 서북구",
           })
         }
@@ -40,7 +39,6 @@ describe("PortfolioProvider", () => {
     writer.createDraft({
       serviceId: "service-aircon",
       title: "저장된 초안",
-      slug: "stored-draft",
       locationDisplay: "아산 배방읍",
     });
     const repository = new LocalStoragePortfolioRepository(localStorage, SEED_SNAPSHOT);
@@ -91,7 +89,6 @@ describe("PortfolioProvider", () => {
       repository.createDraft({
         serviceId: "service-bathroom",
         title: "초기화할 초안",
-        slug: "reset-me",
         locationDisplay: "천안 동남구",
       });
     });

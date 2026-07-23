@@ -20,4 +20,18 @@ describe("Storage gateway", () => {
     await expect(gateway.uploadCaseFiles("case-1", files(21))).resolves.toEqual({ ok: false, code: "selection_limit" });
     expect(client.storage.from).not.toHaveBeenCalled();
   });
+
+  it("stores an original privately and a re-encoded review file separately", async () => {
+    const upload = vi.fn().mockResolvedValue({ error: null });
+    const client = { storage: { from: vi.fn().mockReturnValue({ upload, remove: vi.fn().mockResolvedValue({ error: null }) }) } };
+    const reviewFile = new File(["review"], "photo.webp", { type: "image/webp" });
+    const gateway = createStorageGateway({ enabled: true, client: client as never, createReviewedFile: vi.fn().mockResolvedValue(reviewFile) });
+
+    const result = await gateway.uploadCaseFiles("case-1", files(1));
+
+    expect(result).toMatchObject({ ok: true, files: [{ originalPath: expect.stringMatching(/^case-1\//), reviewedPath: expect.stringMatching(/^case-1\//), mimeType: "image/webp" }] });
+    expect(client.storage.from).toHaveBeenNthCalledWith(1, "case-originals");
+    expect(client.storage.from).toHaveBeenNthCalledWith(2, "case-reviewed-public");
+    expect(upload).toHaveBeenCalledTimes(2);
+  });
 });

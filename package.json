@@ -15,10 +15,6 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "supabase": "supabase",
-    "supabase:test:db": "supabase test db",
-    "supabase:db:lint": "supabase db lint --linked",
-    "supabase:types": "sh scripts/generate-supabase-types.sh",
     "supabase:verify:public": "node scripts/verify-supabase-public.mjs"
   },
   "dependencies": {
@@ -60,7 +56,6 @@
     "jsdom": "28.0.0",
     "lightningcss-darwin-arm64": "1.32.0",
     "postcss": "8.5.6",
-    "supabase": "2.109.1",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
     "vitest": "4.0.18"

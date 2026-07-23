@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mapPortfolioCaseRow, mapServiceRow } from "@/features/portfolio/repository/supabase-mappers";
+import { mapCaseMediaRow, mapPortfolioCaseRow, mapServiceRow } from "@/features/portfolio/repository/supabase-mappers";
 
 describe("Supabase portfolio mappers", () => {
   it("maps trusted snake-case service rows into the existing domain", () => {
@@ -11,5 +11,13 @@ describe("Supabase portfolio mappers", () => {
     expect(mapPortfolioCaseRow({
       id: "case-1", service_id: "service-1", slug: "safe-case", title: "사례", summary: "", location_display: "천안", space_type: "", work_date: null, display_period: "", problem_description: "", work_description: "", result_description: "", seo_title: null, seo_description: null, status: "private", featured_rank: null, privacy_checklist: {}, published_at: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
     })).toMatchObject({ id: "case-1", serviceId: "service-1", workDate: "", status: "private", publishedAt: null, privacyChecklist: { noIdentifiablePeople: false, hasPublicReadyMedia: false } });
+  });
+
+  it("retains private-original and reviewed-public storage paths for case media", () => {
+    expect(mapCaseMediaRow({
+      id: "media-1", case_id: "case-1", stage: "after", sort_order: 0, is_cover: false, is_public: false,
+      alt_text: "", caption: "", width: 1600, height: 1200, mime_type: "image/webp", size_bytes: 100,
+      upload_status: "ready", mock_asset_key: null, storage_path: "case-1/review.webp", original_storage_path: "case-1/original.jpg",
+    })).toMatchObject({ storagePath: "case-1/review.webp", originalStoragePath: "case-1/original.jpg", mockAssetKey: "" });
   });
 });

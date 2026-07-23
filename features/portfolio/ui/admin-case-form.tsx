@@ -17,7 +17,6 @@ const FormSchema = z.object({
   title: z.string().trim().min(1, "제목을 입력해 주세요."),
   serviceId: z.string().min(1, "서비스를 선택해 주세요."),
   locationDisplay: z.string().trim().min(1, "표시 지역을 입력해 주세요."),
-  slug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "영문 소문자, 숫자와 하이픈만 사용해 주세요."),
   summary: z.string(), spaceType: z.string(), problemDescription: z.string(),
   workDescription: z.string(), resultDescription: z.string(), workDate: z.string(),
   displayPeriod: z.string(),
@@ -27,7 +26,7 @@ const FormSchema = z.object({
 type FormValues = z.infer<typeof FormSchema>;
 
 const emptyValues: FormValues = {
-  title: "", serviceId: "", locationDisplay: "", slug: "", summary: "", spaceType: "",
+  title: "", serviceId: "", locationDisplay: "", summary: "", spaceType: "",
   problemDescription: "", workDescription: "", resultDescription: "", workDate: "",
   displayPeriod: "", featuredRank: "", seoTitle: "", seoDescription: "",
 };
@@ -35,7 +34,7 @@ const emptyValues: FormValues = {
 function valuesFor(item: PortfolioCase): FormValues {
   return {
     title: item.title, serviceId: item.serviceId, locationDisplay: item.locationDisplay,
-    slug: item.slug, summary: item.summary, spaceType: item.spaceType,
+    summary: item.summary, spaceType: item.spaceType,
     problemDescription: item.problemDescription, workDescription: item.workDescription,
     resultDescription: item.resultDescription, workDate: item.workDate,
     displayPeriod: item.displayPeriod, featuredRank: item.featuredRank?.toString() ?? "",
@@ -77,7 +76,7 @@ export function AdminCaseForm({ mode, caseId, autosaveMs = 800 }: { mode: "creat
 
   const submit = form.handleSubmit(async (values) => {
     if (mode === "create") {
-      const result = await createDraft({ serviceId: values.serviceId, title: values.title, slug: values.slug, locationDisplay: values.locationDisplay });
+      const result = await createDraft({ serviceId: values.serviceId, title: values.title, locationDisplay: values.locationDisplay });
       if (result) setCreated(true);
     } else if (caseId) {
       const { featuredRank, ...patch } = values;
@@ -100,8 +99,8 @@ export function AdminCaseForm({ mode, caseId, autosaveMs = 800 }: { mode: "creat
         <Field label="서비스" error={error("serviceId")}><select id="case-service" className="admin-select" aria-invalid={Boolean(error("serviceId"))} {...form.register("serviceId")}><option value="">선택하세요</option>{snapshot.services.map((service) => <option value={service.id} key={service.id}>{service.name}</option>)}</select></Field>
         <Field label="표시 지역" error={error("locationDisplay")}><Input id="case-location" placeholder="예: 천안 서북구" {...form.register("locationDisplay")} /></Field>
       </div>
-      <Field label="사례 경로" error={error("slug")}><Input id="case-slug" placeholder="bathroom-cleaning-example" {...form.register("slug")} /></Field>
       {mode === "edit" ? <>
+        <Field label="자동 생성된 사례 주소"><Input id="case-slug" value={`/portfolio/${existing?.slug ?? ""}`} readOnly className="bg-[var(--neutral-50)] text-[var(--neutral-600)]" /></Field>
         <div className="grid gap-5 sm:grid-cols-2"><Field label="작업 날짜"><Input id="case-work-date" type="date" {...form.register("workDate")} /></Field><Field label="고객 표시 시기"><Input id="case-display-period" placeholder="예: 2026년 7월" {...form.register("displayPeriod")} /></Field></div>
         <Field label="대표 사례 순위" error={error("featuredRank")}><Input id="case-featured-rank" type="number" min="1" placeholder="비워 두면 일반 정렬" {...form.register("featuredRank")} /></Field>
         <fieldset><legend className="font-semibold">주요 태그</legend><div className="mt-2 flex flex-wrap gap-2">{availableTags.map((tag) => <label className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--neutral-200)] px-3" key={tag.id}><input type="checkbox" checked={selectedTagIds.includes(tag.id)} onChange={(event) => setCaseTags(caseId!, event.target.checked ? [...selectedTagIds, tag.id] : selectedTagIds.filter((id) => id !== tag.id))} />{tag.name}</label>)}</div></fieldset>
@@ -110,7 +109,7 @@ export function AdminCaseForm({ mode, caseId, autosaveMs = 800 }: { mode: "creat
         <Field label="작업 전 상태"><Textarea id="case-problem" {...form.register("problemDescription")} /></Field>
         <Field label="작업 내용"><Textarea id="case-work" {...form.register("workDescription")} /></Field>
         <Field label="작업 결과"><Textarea id="case-result" {...form.register("resultDescription")} /></Field>
-        <div className="rounded-2xl bg-[var(--neutral-50)] p-4"><h2 className="font-black">SEO 정보</h2><p className="mb-4 mt-1 text-sm text-[var(--neutral-500)]">비우면 사례 제목·요약·slug와 대표 사진으로 자동 생성합니다.</p><div className="grid gap-4"><Field label="SEO 제목"><Input id="case-seo-title" {...form.register("seoTitle")} /></Field><Field label="SEO 설명"><Textarea id="case-seo-description" {...form.register("seoDescription")} /></Field></div></div>
+        <div className="rounded-2xl bg-[var(--neutral-50)] p-4"><h2 className="font-black">SEO 정보</h2><p className="mb-4 mt-1 text-sm text-[var(--neutral-500)]">비우면 사례 제목·요약·자동 생성 주소와 대표 사진으로 자동 생성합니다.</p><div className="grid gap-4"><Field label="SEO 제목"><Input id="case-seo-title" {...form.register("seoTitle")} /></Field><Field label="SEO 설명"><Textarea id="case-seo-description" {...form.register("seoDescription")} /></Field></div></div>
       </> : null}
       <div className="sticky bottom-0 -mx-5 -mb-5 flex items-center justify-between border-t border-[var(--neutral-200)] bg-white/95 p-4 backdrop-blur md:-mx-7 md:-mb-7"><p className="text-sm text-[var(--neutral-500)]">처음에는 고객에게 보이지 않는 비공개 상태입니다.</p><Button type="submit" disabled={form.formState.isSubmitting}>{mode === "create" ? "비공개 초안 만들기" : "지금 저장"}</Button></div>
     </div>

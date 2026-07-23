@@ -71,6 +71,8 @@ export interface CaseMedia {
   sizeBytes: number;
   uploadStatus: UploadStatus;
   mockAssetKey: string;
+  storagePath?: string;
+  originalStoragePath?: string;
   sessionPreviewId: string | null;
 }
 
@@ -151,7 +153,6 @@ export type AdminCaseDetail = PortfolioCase & {
 export interface CreateDraftInput {
   serviceId: string;
   title: string;
-  slug: string;
   locationDisplay: string;
 }
 

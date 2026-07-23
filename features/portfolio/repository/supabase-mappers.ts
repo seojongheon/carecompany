@@ -74,6 +74,8 @@ export function mapCaseMediaRow(row: Row): CaseMedia {
     sizeBytes: integer(row.size_bytes),
     uploadStatus: text(row.upload_status) as CaseMedia["uploadStatus"],
     mockAssetKey: text(row.mock_asset_key),
+    storagePath: row.storage_path == null ? undefined : text(row.storage_path),
+    originalStoragePath: row.original_storage_path == null ? undefined : text(row.original_storage_path),
     sessionPreviewId: null,
   };
 }

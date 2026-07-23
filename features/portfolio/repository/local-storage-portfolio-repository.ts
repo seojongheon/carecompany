@@ -115,7 +115,7 @@ export class LocalStoragePortfolioRepository implements PortfolioRepository {
     const draft: PortfolioCase = PortfolioCaseSchema.parse({
       id: `case-${newId()}`,
       serviceId: input.serviceId,
-      slug: input.slug,
+      slug: `case-${newId()}`,
       title: input.title,
       summary: "새 작업 사례의 설명을 입력해 주세요.",
       locationDisplay: input.locationDisplay,

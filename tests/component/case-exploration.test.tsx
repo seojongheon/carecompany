@@ -52,6 +52,28 @@ describe("case exploration", () => {
     expect(screen.getByText("2 / 4")).toBeInTheDocument();
   });
 
+  it("uses a full-page navigation for the detail action so the intercepted modal route is left", () => {
+    const repository = new LocalStoragePortfolioRepository(localStorage, SEED_SNAPSHOT);
+    const item = repository.listPublicCases({ limit: 1 }).items[0];
+    render(<QuickView items={[item]} initialSlug={item.slug} onClose={() => undefined} />);
+
+    const detailLink = screen.getByRole("link", { name: /상세 사례 보기/ });
+
+    expect(detailLink).toHaveAttribute("data-navigation", "document");
+    expect(detailLink).toHaveAttribute("href", `/portfolio/${item.slug}`);
+  });
+
+  it("keeps quick view usable while a Storage cover URL is unavailable", () => {
+    const repository = new LocalStoragePortfolioRepository(localStorage, SEED_SNAPSHOT);
+    const item = structuredClone(repository.listPublicCases({ limit: 1 }).items[0]);
+    item.coverMedia.mockAssetKey = "";
+
+    render(<QuickView items={[item]} initialSlug={item.slug} onClose={() => undefined} />);
+
+    expect(screen.getByRole("dialog", { name: item.title })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: `${item.coverMedia.altText} — 이미지를 불러오지 못했습니다` })).toBeInTheDocument();
+  });
+
   it("labels enlarged before and after photos in the top-right corner", () => {
     const before = SEED_SNAPSHOT.media.find(({ stage }) => stage === "before")!;
     const after = SEED_SNAPSHOT.media.find(({ stage }) => stage === "after")!;

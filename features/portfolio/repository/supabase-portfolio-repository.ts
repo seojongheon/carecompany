@@ -94,7 +94,8 @@ export class SupabasePortfolioGateway implements PortfolioRemoteGateway {
       ...(uuidOrUndefined(item.id) ? { id: item.id } : {}), case_id: caseId, stage: item.stage, sort_order: item.sortOrder,
       is_cover: item.cover, is_public: item.public, alt_text: item.altText, caption: item.caption,
       width: item.width, height: item.height, mime_type: item.mimeType, size_bytes: item.sizeBytes,
-      upload_status: item.uploadStatus, mock_asset_key: item.mockAssetKey || null, storage_path: null,
+      upload_status: item.uploadStatus, mock_asset_key: item.mockAssetKey || null,
+      storage_path: item.storagePath || null, original_storage_path: item.originalStoragePath || null,
     }));
     requireData(await this.client.from("case_media").insert(rows), null);
   }
@@ -137,7 +138,7 @@ export class SupabasePortfolioRepository implements PortfolioRepository {
 
   async createDraft(input: CreateDraftInput) {
     const row = await this.remote.createDraft({
-      service_id: input.serviceId, title: input.title, slug: input.slug, location_display: input.locationDisplay,
+      service_id: input.serviceId, title: input.title, location_display: input.locationDisplay,
       status: "private", summary: "", space_type: "", display_period: "", problem_description: "", work_description: "", result_description: "",
     });
     await this.hydrate();

@@ -25,7 +25,6 @@ describe("LocalStoragePortfolioRepository", () => {
     const draft = repository.createDraft({
       serviceId: "service-bathroom",
       title: "새 화장실 작업",
-      slug: "new-bathroom-case",
       locationDisplay: "천안 서북구",
     });
     repository.updateCase(draft.id, { summary: "저장된 새 사례의 설명입니다." });
@@ -41,12 +40,12 @@ describe("LocalStoragePortfolioRepository", () => {
     const draft = first.createDraft({
       serviceId: "service-aircon",
       title: "에어컨 초안",
-      slug: "aircon-draft",
       locationDisplay: "아산 배방읍",
     });
     const restored = new LocalStoragePortfolioRepository(localStorage, SEED_SNAPSHOT);
 
     expect(draft.status).toBe("private");
+    expect(draft.slug).toMatch(/^case-[0-9a-f-]{36}$/);
     expect(restored.getAdminCaseById(draft.id)?.title).toBe("에어컨 초안");
     expect(restored.getPublicCaseBySlug(draft.slug)).toBeNull();
   });
@@ -56,7 +55,6 @@ describe("LocalStoragePortfolioRepository", () => {
     const draft = repository.createDraft({
       serviceId: "service-bathroom",
       title: "공개 준비 중",
-      slug: "not-ready",
       locationDisplay: "천안 동남구",
     });
 

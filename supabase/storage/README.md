@@ -1,22 +1,22 @@
-# Deferred Supabase Storage activation
+# Supabase case image Storage
 
-Storage is intentionally disabled for this release. `enable-storage.sql` is not a migration and must not be included in `supabase db push`.
+Storage is enabled by the versioned migration `20260723000800_enable_case_storage.sql`.
 
-## Activation gate
+## Active model
 
-1. Confirm the Supabase plan, expected image volume, egress, backup, and deletion requirements.
-2. Verify every existing `case_media.storage_path` value is either null or follows the reviewed immutable-path convention.
-3. Review the SQL against the current `storage.objects` schema and confirm all eight policies are absent before applying it.
-4. Apply `enable-storage.sql` manually in a staging project first, then confirm original objects are inaccessible to anonymous users and reviewed objects are readable only when their case is published.
-5. Exercise upload, conversion/EXIF removal, review, publish, unpublish, retry, orphan cleanup, and 20/69-file limits.
-6. Set `NEXT_PUBLIC_SUPABASE_STORAGE_ENABLED=true` only after the database policy verification succeeds, then redeploy.
+- `case-originals` is private. Only active administrators can upload, inspect, replace, or delete original files.
+- `case-reviewed-public` is also private. Administrators can inspect it; a visitor can receive a signed URL only when the matching media row is public, ready, and its case is published.
+- The browser re-encodes JPEG, PNG, and WebP uploads as WebP before sending the reviewed file. This removes file metadata from the publicly served copy.
+- `case_media.original_storage_path` records the private original. `case_media.storage_path` records the reviewed WebP copy.
+- `NEXT_PUBLIC_SUPABASE_STORAGE_ENABLED=true` enables the upload path. Restart the application after changing this value.
 
-## Rollback
+## Operational checks
 
-Set `NEXT_PUBLIC_SUPABASE_STORAGE_ENABLED=false` and redeploy first. Drop only the policies defined by `enable-storage.sql`; retain buckets and objects until a backup and retention decision is approved. Never delete either bucket as an emergency rollback.
+1. Confirm that original URLs cannot be read anonymously.
+2. Confirm that a non-public media row cannot create a reviewed signed URL.
+3. Confirm that setting `고객 공개`, choosing `대표 사진`, and publishing the case makes only the reviewed image visible on the public site.
+4. Before permanently deleting a case photo, decide on backup and retention policy. The current screen deletes its database row but does not yet delete the matching Storage objects.
 
-## Validation queries
+## Emergency rollback
 
-- `select id, public, file_size_limit, allowed_mime_types from storage.buckets where id in ('case-originals', 'case-reviewed-public');`
-- `select policyname, cmd, roles from pg_policies where schemaname = 'storage' and tablename = 'objects' order by policyname;`
-- Confirm `supabase migration list` contains no entry for `enable-storage.sql`.
+Set `NEXT_PUBLIC_SUPABASE_STORAGE_ENABLED=false` and restart or redeploy. Existing published signed URLs remain valid until their short expiry; do not delete either bucket in an emergency.

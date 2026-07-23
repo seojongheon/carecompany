@@ -30,9 +30,10 @@ describe("SupabasePortfolioRepository", () => {
     };
     const repository = new SupabasePortfolioRepository(remote as never);
 
-    await repository.createDraft({ serviceId: "service-1", title: "새 사례", slug: "new-case", locationDisplay: "천안" });
+    await repository.createDraft({ serviceId: "service-1", title: "새 사례", locationDisplay: "천안" });
 
     expect(remote.createDraft).toHaveBeenCalledWith(expect.objectContaining({ status: "private" }));
+    expect(remote.createDraft.mock.calls[0][0]).not.toHaveProperty("slug");
     expect(remote.loadSnapshot).toHaveBeenCalledOnce();
   });
 });
