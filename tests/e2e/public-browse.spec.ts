@@ -6,14 +6,13 @@ test.beforeEach(async ({ page }) => {
   await page.reload();
 });
 
-test("home exposes four services and public portfolio load-more", async ({ page }) => {
+test("home exposes four services and portfolio reads the empty linked database", async ({ page }) => {
   for (const name of ["화장실 청소", "에어컨 청소", "아파트 유리창 청소", "상가 유리창 청소"]) {
     await expect(page.getByRole("link", { name }).first()).toBeVisible();
   }
   await page.goto("/portfolio");
-  await expect(page.locator('[data-testid="portfolio-card"]')).toHaveCount(9);
-  await page.getByRole("button", { name: "사례 더 보기" }).click();
-  await expect(page.locator('[data-testid="portfolio-card"]')).toHaveCount(16);
+  await expect(page.locator('[data-testid="portfolio-card"]')).toHaveCount(0);
+  await expect(page.getByText(/공개 사례가 없습니다|조건에 맞는 사례가 없습니다/)).toBeVisible();
 });
 
 test("filter state belongs to the URL and survives reload", async ({ page }) => {
@@ -21,8 +20,8 @@ test("filter state belongs to the URL and survives reload", async ({ page }) => 
   const serviceFilter = page.locator("#main-content").getByLabel("서비스 필터");
   await serviceFilter.selectOption("aircon");
   await expect(page).toHaveURL(/service=aircon/);
-  await expect(page.locator('[data-testid="portfolio-card"]')).toHaveCount(4);
+  await expect(page.locator('[data-testid="portfolio-card"]')).toHaveCount(0);
   await page.reload();
   await expect(page.locator("#main-content").getByLabel("서비스 필터")).toHaveValue("aircon");
-  await expect(page.locator('[data-testid="portfolio-card"]')).toHaveCount(4);
+  await expect(page.locator('[data-testid="portfolio-card"]')).toHaveCount(0);
 });

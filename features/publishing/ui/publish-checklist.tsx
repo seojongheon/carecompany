@@ -21,8 +21,8 @@ export function PublishChecklist({ caseId }: { caseId: string }) {
   const checks = getPublishChecks(snapshot, caseId);
   const canPublish = checks.every(({ complete }) => complete);
   const toggle = (key: keyof Checklist, checked: boolean) => updateCase(caseId, { privacyChecklist: { ...item.privacyChecklist, [key]: checked } });
-  const publish = () => {
-    const result = publishCase(caseId);
+  const publish = async () => {
+    const result = await publishCase(caseId);
     if (result?.ok) setNotice("사례를 공개했습니다. 고객 화면에 즉시 반영됩니다.");
     else setNotice("공개 조건을 다시 확인해 주세요.");
   };

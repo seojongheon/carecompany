@@ -1,18 +1,54 @@
 "use client";
 
 import { useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useSiteContent } from "../repository/site-content-provider";
 
 export function SiteContentAdmin() {
-  const { snapshot, updateDraft, publish, restoreVersion, resetToSeed } = useSiteContent();
+  const { snapshot, updateDraft, saveDraft, publish, restoreVersion } = useSiteContent();
   const [tab, setTab] = useState<"home" | "pricing" | "settings">("home");
   const [notice, setNotice] = useState<string | null>(null);
   const draft = snapshot.draft;
-  const save = () => setNotice("초안을 저장했습니다. 고객 화면에는 아직 반영되지 않습니다.");
-  const publishContent = () => { const result = publish(); setNotice(result.ok ? "게시했습니다. 고객 화면에 새 콘텐츠가 반영됩니다." : result.issues.join(" ")); };
-  return <div className="mx-auto max-w-5xl"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-black text-[var(--brand-700)]">SITE CONTENT</p><h1 className="mt-2 text-3xl font-black">홈페이지 관리</h1><p className="mt-2 text-[var(--neutral-500)]">문구, 가격, 공통 정보를 수정하고 게시합니다. 페이지 구조와 디자인은 고정됩니다.</p></div><div className="flex gap-2"><Button variant="secondary" onClick={save}>초안 저장</Button><Button onClick={publishContent}>변경 사항 게시</Button></div></div>{notice ? <p role="status" className="mt-5 rounded-xl border border-[var(--brand-200)] bg-[var(--brand-50)] p-4 text-sm font-semibold">{notice}</p> : null}<div className="mt-7 flex flex-wrap gap-2" role="tablist">{(["home", "pricing", "settings"] as const).map((item) => <Button key={item} variant={tab === item ? "primary" : "secondary"} size="sm" onClick={() => setTab(item)}>{item === "home" ? "홈" : item === "pricing" ? "가격 안내" : "사이트 설정"}</Button>)}</div>{tab === "home" ? <section className="mt-6 grid gap-5 rounded-2xl border bg-white p-5 md:grid-cols-2"><Field label="히어로 제목"><Input value={draft.home.title} onChange={(event) => updateDraft({ home: { ...draft.home, title: event.target.value } })} /></Field><Field label="Eyebrow"><Input value={draft.home.eyebrow} onChange={(event) => updateDraft({ home: { ...draft.home, eyebrow: event.target.value } })} /></Field><Field label="설명" wide><Textarea value={draft.home.description} onChange={(event) => updateDraft({ home: { ...draft.home, description: event.target.value } })} /></Field><Field label="버튼 라벨"><Input value={draft.home.primaryCtaLabel} onChange={(event) => updateDraft({ home: { ...draft.home, primaryCtaLabel: event.target.value } })} /></Field><Field label="버튼 링크"><Input value={draft.home.primaryCtaHref} onChange={(event) => updateDraft({ home: { ...draft.home, primaryCtaHref: event.target.value } })} /></Field><Field label="대표 이미지 대체 텍스트" wide><Input value={draft.home.heroImageAlt} onChange={(event) => updateDraft({ home: { ...draft.home, heroImageAlt: event.target.value } })} /></Field></section> : null}{tab === "pricing" ? <section className="mt-6 rounded-2xl border bg-white p-5"><Field label="가격 안내 문구"><Textarea value={draft.pricingLead} onChange={(event) => updateDraft({ pricingLead: event.target.value })} /></Field><div className="mt-6 grid gap-4">{draft.priceItems.sort((a, b) => a.sortOrder - b.sortOrder).map((item, index) => <article className="grid gap-3 rounded-xl border p-4 md:grid-cols-[1fr_1fr_auto]" key={item.id}><Input aria-label={`${item.name} 이름`} value={item.name} onChange={(event) => updateDraft({ priceItems: draft.priceItems.map((value) => value.id === item.id ? { ...value, name: event.target.value } : value) })} /><Input aria-label={`${item.name} 가격`} value={item.priceLabel} onChange={(event) => updateDraft({ priceItems: draft.priceItems.map((value) => value.id === item.id ? { ...value, priceLabel: event.target.value } : value) })} /><div className="flex gap-2"><Button size="sm" variant="secondary" disabled={index === 0} onClick={() => { const items = [...draft.priceItems].sort((a, b) => a.sortOrder - b.sortOrder); [items[index - 1], items[index]] = [items[index], items[index - 1]]; updateDraft({ priceItems: items.map((value, position) => ({ ...value, sortOrder: position + 1 })) }); }}>위로</Button><Button size="sm" variant={item.visible ? "primary" : "secondary"} onClick={() => updateDraft({ priceItems: draft.priceItems.map((value) => value.id === item.id ? { ...value, visible: !value.visible } : value) })}>{item.visible ? "공개" : "숨김"}</Button></div></article>)}</div></section> : null}{tab === "settings" ? <section className="mt-6 grid gap-5 rounded-2xl border bg-white p-5 md:grid-cols-2"><Field label="상호"><Input value={draft.settings.businessName} onChange={(event) => updateDraft({ settings: { ...draft.settings, businessName: event.target.value } })} /></Field><Field label="대표 CTA"><Input value={draft.settings.contactLabel} onChange={(event) => updateDraft({ settings: { ...draft.settings, contactLabel: event.target.value } })} /></Field><Field label="푸터 소개" wide><Textarea value={draft.settings.footerDescription} onChange={(event) => updateDraft({ settings: { ...draft.settings, footerDescription: event.target.value } })} /></Field><div className="md:col-span-2"><h2 className="font-bold">최근 게시 버전</h2><div className="mt-3 grid gap-2">{snapshot.versions.map((version) => <div className="flex items-center justify-between rounded-xl bg-[var(--neutral-50)] p-3 text-sm" key={version.id}><span>{new Date(version.createdAt).toLocaleString("ko-KR")}</span><Button size="sm" variant="secondary" onClick={() => { restoreVersion(version.id); setNotice("선택한 버전을 새 초안으로 복원했습니다."); }}>초안으로 복원</Button></div>)}</div><Button className="mt-4" size="sm" variant="danger" onClick={() => { resetToSeed(); setNotice("기본 콘텐츠로 되돌렸습니다. 게시해야 고객 화면이 바뀝니다."); }}>목업 기본값으로 되돌리기</Button></div></section> : null}</div>;
+
+  const save = async () => setNotice(await saveDraft()
+    ? "초안을 저장했습니다. 고객 화면에는 아직 반영되지 않습니다."
+    : "초안을 저장하지 못했습니다. 관리자 권한을 확인해 주세요.");
+  const publishContent = async () => {
+    const result = await publish();
+    setNotice(result.ok ? "게시했습니다. 고객 화면에 새 콘텐츠가 반영됩니다." : result.issues.join(" "));
+  };
+
+  return <div className="mx-auto max-w-5xl">
+    <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-black text-[var(--brand-700)]">SITE CONTENT</p><h1 className="mt-2 text-3xl font-black">홈페이지 관리</h1><p className="mt-2 text-[var(--neutral-500)]">문구, 가격, 공통 정보를 수정하고 게시합니다. 페이지 구조와 디자인은 고정됩니다.</p></div><div className="flex gap-2"><Button variant="secondary" onClick={save}>초안 저장</Button><Button onClick={publishContent}>변경 사항 게시</Button></div></div>
+    {notice ? <p role="status" className="mt-5 rounded-xl border border-[var(--brand-200)] bg-[var(--brand-50)] p-4 text-sm font-semibold">{notice}</p> : null}
+    <div className="mt-7 flex flex-wrap gap-2" role="tablist">{(["home", "pricing", "settings"] as const).map((item) => <Button key={item} variant={tab === item ? "primary" : "secondary"} size="sm" onClick={() => setTab(item)}>{item === "home" ? "홈" : item === "pricing" ? "가격 안내" : "사이트 설정"}</Button>)}</div>
+
+    {tab === "home" ? <section className="mt-6 grid gap-5 rounded-2xl border bg-white p-5 md:grid-cols-2">
+      <Field label="히어로 제목"><Input value={draft.home.title} onChange={(event) => updateDraft({ home: { ...draft.home, title: event.target.value } })} /></Field>
+      <Field label="Eyebrow"><Input value={draft.home.eyebrow} onChange={(event) => updateDraft({ home: { ...draft.home, eyebrow: event.target.value } })} /></Field>
+      <Field label="설명" wide><Textarea value={draft.home.description} onChange={(event) => updateDraft({ home: { ...draft.home, description: event.target.value } })} /></Field>
+      <Field label="버튼 라벨"><Input value={draft.home.primaryCtaLabel} onChange={(event) => updateDraft({ home: { ...draft.home, primaryCtaLabel: event.target.value } })} /></Field>
+      <Field label="버튼 링크"><Input value={draft.home.primaryCtaHref} onChange={(event) => updateDraft({ home: { ...draft.home, primaryCtaHref: event.target.value } })} /></Field>
+      <Field label="대표 이미지 대체 텍스트" wide><Input value={draft.home.heroImageAlt} onChange={(event) => updateDraft({ home: { ...draft.home, heroImageAlt: event.target.value } })} /></Field>
+    </section> : null}
+
+    {tab === "pricing" ? <section className="mt-6 rounded-2xl border bg-white p-5">
+      <Field label="가격 안내 문구"><Textarea value={draft.pricingLead} onChange={(event) => updateDraft({ pricingLead: event.target.value })} /></Field>
+      <div className="mt-6 grid gap-4">{[...draft.priceItems].sort((a, b) => a.sortOrder - b.sortOrder).map((item, index) => <article className="grid gap-3 rounded-xl border p-4 md:grid-cols-[1fr_1fr_auto]" key={item.id}><Input aria-label={`${item.name} 이름`} value={item.name} onChange={(event) => updateDraft({ priceItems: draft.priceItems.map((value) => value.id === item.id ? { ...value, name: event.target.value } : value) })} /><Input aria-label={`${item.name} 가격`} value={item.priceLabel} onChange={(event) => updateDraft({ priceItems: draft.priceItems.map((value) => value.id === item.id ? { ...value, priceLabel: event.target.value } : value) })} /><div className="flex gap-2"><Button size="sm" variant="secondary" disabled={index === 0} onClick={() => { const items = [...draft.priceItems].sort((a, b) => a.sortOrder - b.sortOrder); [items[index - 1], items[index]] = [items[index], items[index - 1]]; updateDraft({ priceItems: items.map((value, position) => ({ ...value, sortOrder: position + 1 })) }); }}>위로</Button><Button size="sm" variant={item.visible ? "primary" : "secondary"} onClick={() => updateDraft({ priceItems: draft.priceItems.map((value) => value.id === item.id ? { ...value, visible: !value.visible } : value) })}>{item.visible ? "공개" : "숨김"}</Button></div></article>)}</div>
+    </section> : null}
+
+    {tab === "settings" ? <section className="mt-6 grid gap-5 rounded-2xl border bg-white p-5 md:grid-cols-2">
+      <Field label="상호"><Input value={draft.settings.businessName} onChange={(event) => updateDraft({ settings: { ...draft.settings, businessName: event.target.value } })} /></Field>
+      <Field label="대표 CTA"><Input value={draft.settings.contactLabel} onChange={(event) => updateDraft({ settings: { ...draft.settings, contactLabel: event.target.value } })} /></Field>
+      <Field label="푸터 소개" wide><Textarea value={draft.settings.footerDescription} onChange={(event) => updateDraft({ settings: { ...draft.settings, footerDescription: event.target.value } })} /></Field>
+      <div className="md:col-span-2"><h2 className="font-bold">최근 게시 버전</h2><div className="mt-3 grid gap-2">{snapshot.versions.map((version) => <div className="flex items-center justify-between rounded-xl bg-[var(--neutral-50)] p-3 text-sm" key={version.id}><span>{new Date(version.createdAt).toLocaleString("ko-KR")}</span><Button size="sm" variant="secondary" onClick={async () => { await restoreVersion(version.id); setNotice("선택한 버전을 새 초안으로 복원했습니다."); }}>초안으로 복원</Button></div>)}</div></div>
+    </section> : null}
+  </div>;
 }
-function Field({ label, children, wide }: { label: string; children: React.ReactNode; wide?: boolean }) { return <label className={wide ? "md:col-span-2" : ""}><span className="mb-2 block text-sm font-bold">{label}</span>{children}</label>; }
+
+function Field({ label, children, wide }: { label: string; children: React.ReactNode; wide?: boolean }) {
+  return <label className={wide ? "md:col-span-2" : ""}><span className="mb-2 block text-sm font-bold">{label}</span>{children}</label>;
+}

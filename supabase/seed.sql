@@ -1,0 +1,3 @@
+-- Local reset seed only.
+-- Canonical public service/content rows are versioned in migrations.
+-- Never create users, administrators, super administrators, passwords, or role elevations here.

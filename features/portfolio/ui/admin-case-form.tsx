@@ -75,14 +75,14 @@ export function AdminCaseForm({ mode, caseId, autosaveMs = 800 }: { mode: "creat
     return () => window.clearTimeout(timer);
   }, [autosaveMs, caseId, lastSaved, mode, updateCase, watchedValues]);
 
-  const submit = form.handleSubmit((values) => {
+  const submit = form.handleSubmit(async (values) => {
     if (mode === "create") {
-      const result = createDraft({ serviceId: values.serviceId, title: values.title, slug: values.slug, locationDisplay: values.locationDisplay });
+      const result = await createDraft({ serviceId: values.serviceId, title: values.title, slug: values.slug, locationDisplay: values.locationDisplay });
       if (result) setCreated(true);
     } else if (caseId) {
       const { featuredRank, ...patch } = values;
       setLastSaved(JSON.stringify(values));
-      updateCase(caseId, { ...patch, featuredRank: featuredRank ? Number(featuredRank) : null });
+      await updateCase(caseId, { ...patch, featuredRank: featuredRank ? Number(featuredRank) : null });
     }
   });
   const error = (name: keyof FormValues) => form.formState.errors[name]?.message;

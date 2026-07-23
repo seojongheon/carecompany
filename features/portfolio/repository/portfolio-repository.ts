@@ -16,6 +16,7 @@ import type {
 } from "../model/types";
 
 export interface PortfolioRepository {
+  hydrate?(): Promise<void>;
   getSnapshot(): MockStoreEnvelope;
   subscribe(listener: () => void): () => void;
   listServices(): Service[];
@@ -24,13 +25,13 @@ export interface PortfolioRepository {
   listRelatedPublicCases(caseId: string, limit: number): PortfolioPage["items"];
   listAdminCases(filter: AdminCaseFilter): AdminCaseSummary[];
   getAdminCaseById(id: string): AdminCaseDetail | null;
-  createDraft(input: CreateDraftInput): PortfolioCase;
-  updateCase(id: string, patch: UpdateCaseInput): PortfolioCase;
-  setCaseMedia(id: string, media: CaseMedia[]): CaseMedia[];
-  setCaseVideos(id: string, videos: CaseVideo[]): CaseVideo[];
-  setCaseTags(id: string, tagIds: string[]): string[];
-  publishCase(id: string): PublishResult;
-  unpublishCase(id: string): PortfolioCase;
-  softDeleteCase(id: string): void;
-  resetToSeed(): void;
+  createDraft(input: CreateDraftInput): PortfolioCase | Promise<PortfolioCase>;
+  updateCase(id: string, patch: UpdateCaseInput): PortfolioCase | Promise<PortfolioCase>;
+  setCaseMedia(id: string, media: CaseMedia[]): CaseMedia[] | Promise<CaseMedia[]>;
+  setCaseVideos(id: string, videos: CaseVideo[]): CaseVideo[] | Promise<CaseVideo[]>;
+  setCaseTags(id: string, tagIds: string[]): string[] | Promise<string[]>;
+  publishCase(id: string): PublishResult | Promise<PublishResult>;
+  unpublishCase(id: string): PortfolioCase | Promise<PortfolioCase>;
+  softDeleteCase(id: string): void | Promise<void>;
+  resetToSeed(): void | Promise<void>;
 }

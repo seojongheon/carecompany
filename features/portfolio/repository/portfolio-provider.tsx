@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import { createContext, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { SEED_SNAPSHOT } from "../data/seed";
 import type {
   CaseMedia,
@@ -13,6 +14,7 @@ import type {
 } from "../model/types";
 import { LocalStoragePortfolioRepository } from "./local-storage-portfolio-repository";
 import type { PortfolioRepository } from "./portfolio-repository";
+import { SupabasePortfolioGateway, SupabasePortfolioRepository } from "./supabase-portfolio-repository";
 
 export type MutationState = "idle" | "saving" | "saved" | "failed";
 
@@ -27,37 +29,28 @@ export interface PortfolioContextValue {
   mutation: MutationStatus;
   recoveryNotice: string | null;
   dismissRecoveryNotice: () => void;
-  createDraft: (input: CreateDraftInput) => ReturnType<PortfolioRepository["createDraft"]> | undefined;
-  updateCase: (id: string, patch: UpdateCaseInput) => ReturnType<PortfolioRepository["updateCase"]> | undefined;
-  setCaseMedia: (id: string, media: CaseMedia[]) => CaseMedia[] | undefined;
-  setCaseVideos: (id: string, videos: CaseVideo[]) => CaseVideo[] | undefined;
-  setCaseTags: (id: string, tagIds: string[]) => string[] | undefined;
-  publishCase: (id: string) => PublishResult | undefined;
-  unpublishCase: (id: string) => ReturnType<PortfolioRepository["unpublishCase"]> | undefined;
-  softDeleteCase: (id: string) => void;
-  resetToSeed: () => void;
+  createDraft: (input: CreateDraftInput) => Promise<Awaited<ReturnType<PortfolioRepository["createDraft"]>> | undefined>;
+  updateCase: (id: string, patch: UpdateCaseInput) => Promise<Awaited<ReturnType<PortfolioRepository["updateCase"]>> | undefined>;
+  setCaseMedia: (id: string, media: CaseMedia[]) => Promise<CaseMedia[] | undefined>;
+  setCaseVideos: (id: string, videos: CaseVideo[]) => Promise<CaseVideo[] | undefined>;
+  setCaseTags: (id: string, tagIds: string[]) => Promise<string[] | undefined>;
+  publishCase: (id: string) => Promise<PublishResult | undefined>;
+  unpublishCase: (id: string) => Promise<Awaited<ReturnType<PortfolioRepository["unpublishCase"]>> | undefined>;
+  softDeleteCase: (id: string) => Promise<void>;
+  resetToSeed: () => Promise<void>;
 }
 
 export const PortfolioContext = createContext<PortfolioContextValue | null>(null);
-const SERVER_SNAPSHOT = structuredClone(SEED_SNAPSHOT) as MockStoreEnvelope;
-
-class MemoryStorage implements Storage {
-  private readonly values = new Map<string, string>();
-  get length() { return this.values.size; }
-  clear() { this.values.clear(); }
-  getItem(key: string) { return this.values.get(key) ?? null; }
-  key(index: number) { return [...this.values.keys()][index] ?? null; }
-  removeItem(key: string) { this.values.delete(key); }
-  setItem(key: string, value: string) { this.values.set(key, value); }
-}
-
 function defaultRepository() {
-  const storage = typeof window === "undefined" ? new MemoryStorage() : window.localStorage;
-  return new LocalStoragePortfolioRepository(storage, SEED_SNAPSHOT);
+  const client = createBrowserSupabaseClient();
+  return new SupabasePortfolioRepository(new SupabasePortfolioGateway(client));
 }
 
 function createReactStore(repository: PortfolioRepository) {
   let current = repository.getSnapshot();
+  const serverSnapshot = repository instanceof LocalStoragePortfolioRepository
+    ? structuredClone(SEED_SNAPSHOT) as MockStoreEnvelope
+    : current;
   const reactListeners = new Set<() => void>();
   let unsubscribeRepository: (() => void) | null = null;
   const onRepositoryChange = () => {
@@ -66,7 +59,7 @@ function createReactStore(repository: PortfolioRepository) {
   };
   return {
     getSnapshot: () => current,
-    getServerSnapshot: () => SERVER_SNAPSHOT,
+    getServerSnapshot: () => serverSnapshot,
     subscribe(listener: () => void) {
       reactListeners.add(listener);
       unsubscribeRepository ??= repository.subscribe(onRepositoryChange);
@@ -90,10 +83,11 @@ export function PortfolioProvider({
   repository: repositoryProp,
 }: Readonly<{
   children: React.ReactNode;
-  repository?: LocalStoragePortfolioRepository;
+  repository?: PortfolioRepository;
 }>) {
   const repository = useMemo(() => repositoryProp ?? defaultRepository(), [repositoryProp]);
   const reactStore = useMemo(() => createReactStore(repository), [repository]);
+  useEffect(() => { void repository.hydrate?.().catch(() => reactStore.refresh()); }, [reactStore, repository]);
   const snapshot = useSyncExternalStore(
     reactStore.subscribe,
     reactStore.getSnapshot,
@@ -115,15 +109,15 @@ export function PortfolioProvider({
   );
   const [recoveryDismissed, setRecoveryDismissed] = useState(false);
 
-  const execute = useCallback(<T,>(operation: () => T): T | undefined => {
+  const execute = useCallback(async <T,>(operation: () => T | Promise<T>): Promise<T | undefined> => {
     setMutation({ state: "saving", message: "저장 중입니다." });
     try {
-      const result = operation();
+      const result = await operation();
       setMutation({ state: "saved", message: "저장했습니다." });
       return result;
     } catch {
       reactStore.refresh();
-      setMutation({ state: "failed", message: "브라우저 저장에 실패했습니다. 입력 내용은 현재 화면에 유지됩니다." });
+      setMutation({ state: "failed", message: "저장에 실패했습니다. 권한과 입력 내용을 확인해 주세요." });
       return undefined;
     }
   }, [reactStore]);
@@ -135,8 +129,8 @@ export function PortfolioProvider({
   const setCaseTags = useCallback((id: string, tagIds: string[]) => execute(() => repository.setCaseTags(id, tagIds)), [execute, repository]);
   const publishCase = useCallback((id: string) => execute(() => repository.publishCase(id)), [execute, repository]);
   const unpublishCase = useCallback((id: string) => execute(() => repository.unpublishCase(id)), [execute, repository]);
-  const softDeleteCase = useCallback((id: string) => { execute(() => repository.softDeleteCase(id)); }, [execute, repository]);
-  const resetToSeed = useCallback(() => { execute(() => repository.resetToSeed()); }, [execute, repository]);
+  const softDeleteCase = useCallback(async (id: string) => { await execute(() => repository.softDeleteCase(id)); }, [execute, repository]);
+  const resetToSeed = useCallback(async () => { await execute(() => repository.resetToSeed()); }, [execute, repository]);
 
   const value = useMemo<PortfolioContextValue>(() => ({
     snapshot,

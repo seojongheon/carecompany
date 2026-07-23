@@ -2,7 +2,7 @@
 
 **Purpose:** Preserve every temporary frontend-only decision that must be replaced or verified
 before production deployment.  
-**Current milestone:** Frontend mock only  
+**Current milestone:** Supabase Auth/PostgreSQL/RLS connected; Storage and production operations deferred
 **Last reviewed:** 2026-07-23
 
 No unchecked item in this document may be treated as production-ready.
@@ -30,44 +30,43 @@ visible components are reused.
 
 ## 1. Authentication and authorization
 
-- [ ] Replace the customer browser adapter with Supabase Auth while preserving the repository contract.
-- [ ] Enforce server-side session and role checks for every `/admin` route and mutation.
+- [x] Replace the customer browser adapter with Supabase Auth while preserving the repository contract.
+- [x] Enforce server-side session and role checks for every `/admin` route and trusted mutation.
 - [ ] Create the initial super administrator through a reviewed deployment runbook; never seed credentials in source, public environment variables, or browser storage.
-- [ ] Let only `super_admin` grant or revoke `admin` on existing customer accounts and record an immutable audit trail.
-- [ ] Create active administrator profiles and reject inactive/non-admin authenticated users.
+- [x] Let only `super_admin` grant or revoke `admin` on existing customer accounts and record an immutable audit trail.
+- [x] Create customer profiles automatically and reject inactive/non-admin authenticated users from administrator operations.
 - [ ] Add secure logout, session expiry, reauthentication, and draft recovery flows.
 - [ ] Add tests proving anonymous and non-admin users cannot read or mutate administrator data.
 - [ ] Add rate limiting, generic authentication errors, secure password reset, and account-enumeration protections.
 
-**Current substitute:** Customer-only browser mock authentication. Administrator login always fails,
-forged browser administrator roles are discarded, and `/admin` is client-locked. This is a UX guard,
-not a production security boundary. No administrator or super-administrator credential exists.  
+**Current substitute:** Supabase Auth and server/RLS authorization are active. No administrator or
+super-administrator credential exists yet; SMTP, CAPTCHA/rate limits, and production session operations remain deployment gates.
 **Completion evidence:** Auth configuration, server guard tests, and E2E access-control results.
 
 ## 2. Database and migrations
 
-- [ ] Convert mock entities into Postgres tables and reviewed SQL migrations.
-- [ ] Seed the four canonical PRD services with stable keys and slugs.
-- [ ] Add constraints for unique slugs, 69-media maximum, three-video maximum, cover ownership,
+- [x] Convert mock entities into Postgres tables and reviewed SQL migrations.
+- [x] Seed the four canonical PRD services with stable keys and slugs.
+- [x] Add constraints for unique slugs, 69-media maximum, three-video maximum, cover ownership,
   ordering, and publish prerequisites.
-- [ ] Generate Supabase database TypeScript types and replace handwritten persistence DTOs.
+- [x] Generate Supabase database TypeScript types and add Supabase-backed repository DTO mappings.
 - [ ] Define backup, rollback, and migration verification procedures.
-- [ ] Add site settings, page content, price items, site media, and content-version storage with
+- [x] Add site settings, page content, price items, and content-version storage with
   draft/published separation and protected canonical service keys.
 
-**Current substitute:** Versioned JSON records in browser `localStorage`.  
+**Current substitute:** Supabase PostgreSQL is active; site-media binary storage remains deferred.
 **Completion evidence:** Migration files, generated types, schema tests, and rollback exercise.
 
 ## 3. RLS and privacy boundary
 
-- [ ] Enable RLS on every public-schema table.
-- [ ] Permit anonymous reads only for published cases and ready public media/videos.
-- [ ] Restrict all mutations to active administrators.
+- [x] Enable RLS on every public-schema table.
+- [x] Permit anonymous reads only for published cases and ready public media/videos.
+- [x] Restrict all mutations to active administrators.
 - [ ] Confirm private/deleted cases are absent from lists, counts, related content, direct URLs,
   sitemap, cache, and storage access.
 - [ ] Add automated RLS tests for anonymous, authenticated non-admin, inactive admin, and admin.
 
-**Current substitute:** Client selectors hide private mock records. This is not a security boundary.  
+**Current substitute:** Remote RLS is active and the anonymous verification script confirms drafts/profiles are denied.
 **Completion evidence:** SQL policies and passing adversarial RLS test suite.
 
 ## 4. Image storage and processing
@@ -81,8 +80,8 @@ not a production security boundary. No administrator or super-administrator cred
 - [ ] Make partial failure, resume, retry, cleanup, and orphan reconciliation operational.
 - [ ] Revoke public access or remove public derivatives immediately when media/case is private.
 
-**Current substitute:** Uppy Core queue, session-only object URLs, and simulated
-progress/failure states without a transport plugin.  
+**Current substitute:** Storage is fail-closed in the Supabase repository. Local mock tests retain
+session previews; production displays a connection-waiting state and makes no Storage request.
 **Completion evidence:** Storage policies, processing job tests, mobile interruption E2E, and
 privacy inspection of generated files.
 

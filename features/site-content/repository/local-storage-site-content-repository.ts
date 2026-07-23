@@ -1,11 +1,12 @@
 import { SITE_CONTENT_SEED_SNAPSHOT } from "../model/seed";
 import type { PublishContentResult, SiteContent, SiteContentSnapshot } from "../model/types";
+import type { SiteContentRepository } from "./site-content-repository";
 
 export const SITE_CONTENT_STORAGE_KEY = "hygiene-technology:site-content:v1";
 const clone = <T,>(value: T): T => structuredClone(value);
 const newId = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-export class LocalStorageSiteContentRepository {
+export class LocalStorageSiteContentRepository implements SiteContentRepository {
   private snapshot: SiteContentSnapshot;
   private listeners = new Set<() => void>();
   constructor(private readonly storage: Storage, seed: SiteContentSnapshot = SITE_CONTENT_SEED_SNAPSHOT) {
@@ -15,6 +16,7 @@ export class LocalStorageSiteContentRepository {
   getSnapshot() { return this.snapshot; }
   subscribe(listener: () => void) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
   updateDraft(patch: Partial<SiteContent>) { this.commit({ ...this.snapshot, draft: { ...this.snapshot.draft, ...clone(patch) } }); }
+  async saveDraft() { return undefined; }
   publish(): PublishContentResult {
     const issues: string[] = [];
     if (!this.snapshot.draft.home.title.trim()) issues.push("홈 제목을 입력해 주세요.");
