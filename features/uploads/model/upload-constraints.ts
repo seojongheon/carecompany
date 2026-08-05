@@ -5,11 +5,9 @@ export const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
-  "image/heic",
-  "image/heif",
 ] as const;
 
-export type UploadIssueCode = "selection-limit" | "case-limit" | "unsupported-type" | "file-too-large";
+export type UploadIssueCode = "selection-limit" | "case-limit" | "unsupported-type" | "empty-file" | "file-too-large";
 
 export interface UploadIssue {
   code: UploadIssueCode;
@@ -37,6 +35,10 @@ export function validateFileSelection(files: File[], existingCount: number) {
       issues.push({ code: "unsupported-type", fileName: selected.name, message: `${selected.name}: 지원하지 않는 이미지 형식입니다.` });
       return false;
     }
+    if (selected.size === 0) {
+      issues.push({ code: "empty-file", fileName: selected.name, message: `${selected.name}: 빈 파일은 업로드할 수 없습니다.` });
+      return false;
+    }
     if (selected.size > MAX_FILE_SIZE_BYTES) {
       issues.push({ code: "file-too-large", fileName: selected.name, message: `${selected.name}: 파일 크기는 20MB 이하여야 합니다.` });
       return false;
@@ -45,4 +47,3 @@ export function validateFileSelection(files: File[], existingCount: number) {
   });
   return { accepted, issues };
 }
-

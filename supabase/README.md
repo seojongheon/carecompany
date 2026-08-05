@@ -2,7 +2,7 @@
 
 ## Applied database boundary
 
-The seven versioned migrations create the content schema, customer profile trigger, RLS policies, trusted publish functions, immutable role audit, and super-admin role-management RPC. They never create an Auth user or privileged profile.
+The versioned migrations create the content schema, customer profile trigger, RLS policies, trusted publish functions, immutable role audit, role-management RPC, and private image Storage policies. They never create an Auth user or privileged profile.
 
 ## Initial super administrator (deferred, do not execute during build)
 
@@ -42,5 +42,6 @@ If the target profile is missing or the audit insert count is not exactly one, r
 
 - Always run `migration list` and `db push --dry-run` before push.
 - Never run `db reset --linked` or `--include-seed` against the linked project.
-- Keep `SUPABASE_DATABASE_PASSWORD` local and rotate it after any suspected terminal/log exposure.
-- Do not run `storage/enable-storage.sql` until its activation checklist is approved.
+- Prefer the `supabase link` password prompt and native credential storage. For non-interactive CLI/CI only, use the official `SUPABASE_DB_PASSWORD` name in an encrypted CI secret; never add it to Vercel or browser environment variables, and rotate it after suspected exposure.
+- Do not run `storage/enable-storage.sql`; it is superseded by `migrations/20260805000100_storage_production_readiness.sql`.
+- Keep the Vercel Storage flag disabled until the linked-project migration dry run, push, and access checks pass.

@@ -87,9 +87,6 @@ export class SupabasePortfolioGateway implements PortfolioRemoteGateway {
   }
 
   async replaceMedia(caseId: string, media: CaseMedia[]) {
-    const removed = await this.client.from("case_media").delete().eq("case_id", caseId);
-    requireData(removed, null);
-    if (!media.length) return;
     const rows = media.map((item) => ({
       ...(uuidOrUndefined(item.id) ? { id: item.id } : {}), case_id: caseId, stage: item.stage, sort_order: item.sortOrder,
       is_cover: item.cover, is_public: item.public, alt_text: item.altText, caption: item.caption,
@@ -97,7 +94,7 @@ export class SupabasePortfolioGateway implements PortfolioRemoteGateway {
       upload_status: item.uploadStatus, mock_asset_key: item.mockAssetKey || null,
       storage_path: item.storagePath || null, original_storage_path: item.originalStoragePath || null,
     }));
-    requireData(await this.client.from("case_media").insert(rows), null);
+    requireData(await this.client.rpc("replace_case_media", { case_id: caseId, media: rows }), null);
   }
 
   async replaceVideos(caseId: string, videos: CaseVideo[]) {

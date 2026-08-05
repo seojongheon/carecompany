@@ -60,6 +60,9 @@ describe("admin draft flows", () => {
 
     expect(screen.getByLabelText("자동 생성된 사례 주소")).toHaveValue(`/portfolio/${draft.slug}`);
     expect(screen.getByLabelText("자동 생성된 사례 주소")).toHaveAttribute("readonly");
+    expect(screen.queryByLabelText("SEO 제목")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("SEO 설명")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "SEO 정보" })).not.toBeInTheDocument();
     const title = screen.getByLabelText("사례 제목");
     await user.clear(title);
     await user.type(title, "자동 저장된 사례 제목");

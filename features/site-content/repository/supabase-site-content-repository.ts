@@ -3,9 +3,27 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { SITE_CONTENT_SEED, SITE_CONTENT_SEED_SNAPSHOT } from "../model/seed";
 import type { PriceItem, PublishContentResult, SiteContent, SiteContentSnapshot, SiteContentVersion } from "../model/types";
 import type { SiteContentRepository } from "./site-content-repository";
+import { createHeroStorageGateway } from "../storage/hero-storage-gateway";
+import { isSupabaseStorageAllowed } from "@/features/uploads/model/upload-runtime";
 
 type Row = Record<string, unknown>;
 const clone = <T,>(value: T): T => structuredClone(value);
+const HERO_SIGNED_URL_TTL_SECONDS = 60 * 30;
+
+function withoutTransientHeroUrl(content: SiteContent): SiteContent {
+  const persistent = clone(content);
+  delete persistent.home.heroImageUrl;
+  return persistent;
+}
+
+async function withResolvedHeroUrl(content: SiteContent, client: SupabaseClient): Promise<SiteContent> {
+  const resolved = withoutTransientHeroUrl(content);
+  const path = resolved.home.heroImageStoragePath;
+  if (!path) return resolved;
+  const result = await client.storage.from("landing-hero").createSignedUrl(path, HERO_SIGNED_URL_TTL_SECONDS);
+  if (!result.error && result.data?.signedUrl) resolved.home.heroImageUrl = result.data.signedUrl;
+  return resolved;
+}
 
 function normalizePriceItems(value: unknown): PriceItem[] {
   if (!Array.isArray(value)) return [];
@@ -36,6 +54,8 @@ export interface SiteContentRemoteGateway {
 }
 
 export class SupabaseSiteContentGateway implements SiteContentRemoteGateway {
+  private currentDraftHeroPath: string | undefined;
+
   constructor(private readonly client: SupabaseClient) {}
 
   async loadSnapshot(): Promise<SiteContentSnapshot> {
@@ -51,8 +71,13 @@ export class SupabaseSiteContentGateway implements SiteContentRemoteGateway {
       if (versionsResult.error) throw new Error(versionsResult.error.message);
       if (pricesResult.error) throw new Error(pricesResult.error.message);
       const priceItems = normalizePriceItems(pricesResult.data ?? []);
-      const versions: SiteContentVersion[] = ((versionsResult.data ?? []) as Row[]).map((row) => ({ id: String(row.id), createdAt: String(row.created_at), content: normalizeContent(row.content, priceItems) }));
-      return { draft: normalizeContent(siteRow.data.draft, priceItems), published: normalizeContent(siteRow.data.published, priceItems), versions };
+      const versions: SiteContentVersion[] = ((versionsResult.data ?? []) as Row[]).map((row) => ({ id: String(row.id), createdAt: String(row.created_at), content: withoutTransientHeroUrl(normalizeContent(row.content, priceItems)) }));
+      const [draft, published] = await Promise.all([
+        withResolvedHeroUrl(normalizeContent(siteRow.data.draft, priceItems), this.client),
+        withResolvedHeroUrl(normalizeContent(siteRow.data.published, priceItems), this.client),
+      ]);
+      this.currentDraftHeroPath = draft.home.heroImageStoragePath;
+      return { draft, published, versions };
     }
 
     // Anonymous visitors and customers cannot read drafts or version history.
@@ -63,13 +88,33 @@ export class SupabaseSiteContentGateway implements SiteContentRemoteGateway {
   private async loadPublishedSnapshot(): Promise<SiteContentSnapshot> {
     const publishedResult = await this.client.rpc("get_published_site_content");
     if (publishedResult.error) throw new Error(publishedResult.error.message);
-    const published = normalizeContent(publishedResult.data);
+    const published = await withResolvedHeroUrl(normalizeContent(publishedResult.data), this.client);
     return { draft: clone(published), published, versions: [] };
   }
 
   async saveDraft(content: SiteContent) {
-    const result = await this.client.rpc("update_site_content_draft", { content });
-    if (result.error) throw new Error(result.error.message);
+    const persistent = withoutTransientHeroUrl(content);
+    const previousPath = this.currentDraftHeroPath;
+    const result = await this.client.rpc("update_site_content_draft", { content: persistent });
+    if (result.error) {
+      const pendingPath = persistent.home.heroImageStoragePath;
+      if (
+        pendingPath
+        && pendingPath !== previousPath
+        && isSupabaseStorageAllowed(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_ENABLED === "true", process.env.NODE_ENV)
+      ) {
+        await createHeroStorageGateway({ enabled: true, client: this.client }).removeIfUnreferenced(pendingPath);
+      }
+      throw new Error(result.error.message);
+    }
+    this.currentDraftHeroPath = persistent.home.heroImageStoragePath;
+    if (
+      previousPath
+      && previousPath !== this.currentDraftHeroPath
+      && isSupabaseStorageAllowed(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_ENABLED === "true", process.env.NODE_ENV)
+    ) {
+      await createHeroStorageGateway({ enabled: true, client: this.client }).removeIfUnreferenced(previousPath);
+    }
   }
 
   async publish() {

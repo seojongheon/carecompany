@@ -63,7 +63,7 @@ describe("case exploration", () => {
     expect(detailLink).toHaveAttribute("href", `/portfolio/${item.slug}`);
   });
 
-  it("keeps quick view usable while a Storage cover URL is unavailable", () => {
+  it("uses the service mock image while development Storage reads are disabled", () => {
     const repository = new LocalStoragePortfolioRepository(localStorage, SEED_SNAPSHOT);
     const item = structuredClone(repository.listPublicCases({ limit: 1 }).items[0]);
     item.coverMedia.mockAssetKey = "";
@@ -71,7 +71,10 @@ describe("case exploration", () => {
     render(<QuickView items={[item]} initialSlug={item.slug} onClose={() => undefined} />);
 
     expect(screen.getByRole("dialog", { name: item.title })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: `${item.coverMedia.altText} — 이미지를 불러오지 못했습니다` })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: item.coverMedia.altText })).toHaveAttribute(
+      "src",
+      expect.stringContaining("/mock-media/bathroom.svg"),
+    );
   });
 
   it("labels enlarged before and after photos in the top-right corner", () => {
