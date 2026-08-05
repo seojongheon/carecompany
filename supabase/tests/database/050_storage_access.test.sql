@@ -1,5 +1,7 @@
 begin;
 
+create extension if not exists pgtap with schema extensions;
+
 select plan(38);
 
 select results_eq(
@@ -88,15 +90,39 @@ select ok(
   'landing hero uploads require authenticated policy'
 );
 
-select ok(not has_table_privilege('anon', 'storage.buckets', 'INSERT'), 'anonymous cannot create buckets');
-select ok(not has_table_privilege('authenticated', 'storage.buckets', 'INSERT'), 'authenticated users cannot create buckets');
-select ok(not has_table_privilege('anon', 'storage.objects', 'INSERT'), 'anonymous cannot upload objects');
-select ok(has_table_privilege('authenticated', 'storage.objects', 'INSERT'), 'authenticated uploads are restricted by RLS');
+set local role anon;
+select throws_ok(
+  $$insert into storage.buckets (id, name) values ('tap-anon-bucket', 'tap-anon-bucket')$$,
+  '42501',
+  null,
+  'anonymous cannot create buckets'
+);
+select throws_ok(
+  $$insert into storage.objects (bucket_id, name) values ('landing-hero', 'tap-anon.webp')$$,
+  '42501',
+  null,
+  'anonymous cannot upload objects'
+);
+reset role;
+
+set local role authenticated;
+select throws_ok(
+  $$insert into storage.buckets (id, name) values ('tap-authenticated-bucket', 'tap-authenticated-bucket')$$,
+  '42501',
+  null,
+  'authenticated users cannot create buckets'
+);
+reset role;
+
+select ok(
+  (select relrowsecurity from pg_class where oid = 'storage.objects'::regclass),
+  'authenticated uploads are restricted by RLS'
+);
 
 insert into public.portfolio_cases (
   id, service_id, slug, title, status, published_at
 ) values
-  ('51000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111', 'storage-public-case', 'Storage public case', 'published', now()),
+  ('51000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111', 'storage-public-case', 'Storage public case', 'private', null),
   ('51000000-0000-4000-8000-000000000002', '11111111-1111-4111-8111-111111111111', 'storage-private-case', 'Storage private case', 'private', null);
 
 insert into public.case_media (
@@ -104,6 +130,12 @@ insert into public.case_media (
 ) values
   ('52000000-0000-4000-8000-000000000001', '51000000-0000-4000-8000-000000000001', 'after', true, 'public', 1, 1, 'image/webp', 1, 'ready', '51000000-0000-4000-8000-000000000001/public.webp'),
   ('52000000-0000-4000-8000-000000000002', '51000000-0000-4000-8000-000000000002', 'after', true, 'private', 1, 1, 'image/webp', 1, 'ready', '51000000-0000-4000-8000-000000000002/private.webp');
+
+set local app.allow_case_transition = 'true';
+update public.portfolio_cases
+set status = 'published', published_at = now()
+where id = '51000000-0000-4000-8000-000000000001';
+set local app.allow_case_transition = 'false';
 
 update public.site_content
 set published = jsonb_set(published, '{home,heroImageStoragePath}', '"hero/published.webp"'::jsonb, true)
@@ -119,7 +151,16 @@ insert into storage.objects (bucket_id, name) values
 set local role anon;
 
 select results_eq(
-  $$select name from storage.objects where bucket_id = 'case-reviewed-public' order by name$$,
+  $$
+    select name
+    from storage.objects
+    where bucket_id = 'case-reviewed-public'
+      and name in (
+        '51000000-0000-4000-8000-000000000001/public.webp',
+        '51000000-0000-4000-8000-000000000002/private.webp'
+      )
+    order by name
+  $$,
   $$values ('51000000-0000-4000-8000-000000000001/public.webp'::text)$$,
   'anonymous reads only reviewed media attached to a published case'
 );
