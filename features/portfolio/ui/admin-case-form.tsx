@@ -21,14 +21,13 @@ const FormSchema = z.object({
   workDescription: z.string(), resultDescription: z.string(), workDate: z.string(),
   displayPeriod: z.string(),
   featuredRank: z.string().regex(/^$|^\d+$/, "대표 순위는 숫자로 입력해 주세요."),
-  seoTitle: z.string(), seoDescription: z.string(),
 });
 type FormValues = z.infer<typeof FormSchema>;
 
 const emptyValues: FormValues = {
   title: "", serviceId: "", locationDisplay: "", summary: "", spaceType: "",
   problemDescription: "", workDescription: "", resultDescription: "", workDate: "",
-  displayPeriod: "", featuredRank: "", seoTitle: "", seoDescription: "",
+  displayPeriod: "", featuredRank: "",
 };
 
 function valuesFor(item: PortfolioCase): FormValues {
@@ -38,7 +37,6 @@ function valuesFor(item: PortfolioCase): FormValues {
     problemDescription: item.problemDescription, workDescription: item.workDescription,
     resultDescription: item.resultDescription, workDate: item.workDate,
     displayPeriod: item.displayPeriod, featuredRank: item.featuredRank?.toString() ?? "",
-    seoTitle: item.seoTitle ?? "", seoDescription: item.seoDescription ?? "",
   };
 }
 
@@ -109,7 +107,6 @@ export function AdminCaseForm({ mode, caseId, autosaveMs = 800 }: { mode: "creat
         <Field label="작업 전 상태"><Textarea id="case-problem" {...form.register("problemDescription")} /></Field>
         <Field label="작업 내용"><Textarea id="case-work" {...form.register("workDescription")} /></Field>
         <Field label="작업 결과"><Textarea id="case-result" {...form.register("resultDescription")} /></Field>
-        <div className="rounded-2xl bg-[var(--neutral-50)] p-4"><h2 className="font-black">SEO 정보</h2><p className="mb-4 mt-1 text-sm text-[var(--neutral-500)]">비우면 사례 제목·요약·자동 생성 주소와 대표 사진으로 자동 생성합니다.</p><div className="grid gap-4"><Field label="SEO 제목"><Input id="case-seo-title" {...form.register("seoTitle")} /></Field><Field label="SEO 설명"><Textarea id="case-seo-description" {...form.register("seoDescription")} /></Field></div></div>
       </> : null}
       <div className="sticky bottom-0 -mx-5 -mb-5 flex items-center justify-between border-t border-[var(--neutral-200)] bg-white/95 p-4 backdrop-blur md:-mx-7 md:-mb-7"><p className="text-sm text-[var(--neutral-500)]">처음에는 고객에게 보이지 않는 비공개 상태입니다.</p><Button type="submit" disabled={form.formState.isSubmitting}>{mode === "create" ? "비공개 초안 만들기" : "지금 저장"}</Button></div>
     </div>

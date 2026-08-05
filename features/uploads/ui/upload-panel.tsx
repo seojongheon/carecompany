@@ -30,8 +30,15 @@ export function UploadPanel({ caseId, stage }: { caseId: string; stage: CaseImag
 
   const persistReady = async (id: string, file: File) => {
     const latest = repository.getAdminCaseById(caseId)?.media ?? [];
-    const uploaded = storageEnabled ? await createStorageGateway({ enabled: true, client: createBrowserSupabaseClient() }).uploadCaseFiles(caseId, [file]) : null;
-    if (uploaded && !uploaded.ok) throw new Error(uploaded.code === "processing_failed" ? "이미지 검토본을 생성하지 못했습니다. JPG, PNG 또는 WebP 파일을 사용해 주세요." : "Supabase Storage에 사진을 저장하지 못했습니다.");
+    const storageGateway = storageEnabled ? createStorageGateway({ enabled: true, client: createBrowserSupabaseClient() }) : null;
+    const uploaded = storageGateway ? await storageGateway.uploadCaseFiles(caseId, [file]) : null;
+    if (uploaded && !uploaded.ok) throw new Error(
+      uploaded.code === "processing_failed"
+        ? "이미지 검토본을 생성하지 못했습니다. 파일 내용이 올바른 JPG, PNG 또는 WebP인지 확인해 주세요."
+        : uploaded.code === "cleanup_required"
+          ? `업로드에 실패했고 Storage 정리가 필요합니다: ${uploaded.files.map(({ originalPath, reviewedPath }) => originalPath || reviewedPath).join(", ")}`
+          : "Supabase Storage에 사진을 저장하지 못했습니다.",
+    );
     const storageFile = uploaded?.ok ? uploaded.files[0] : null;
     const next: CaseMedia = {
       id: `media-${id}`, caseId, stage, sortOrder: latest.length,
@@ -41,7 +48,16 @@ export function UploadPanel({ caseId, stage }: { caseId: string; stage: CaseImag
       storagePath: storageFile?.reviewedPath, originalStoragePath: storageFile?.originalPath,
       sessionPreviewId: null,
     };
-    await setCaseMedia(caseId, [...latest.filter((item) => item.id !== next.id), next]);
+    const saved = await setCaseMedia(caseId, [...latest.filter((item) => item.id !== next.id), next]);
+    if (!saved && storageGateway && storageFile) {
+      const cleanup = await storageGateway.removeCaseFiles([{
+        originalPath: storageFile.originalPath,
+        reviewedPath: storageFile.reviewedPath,
+      }]);
+      throw new Error(cleanup.ok
+        ? "사진 정보를 저장하지 못해 업로드한 파일을 정리했습니다."
+        : "사진 정보 저장과 업로드 파일 정리에 실패했습니다. 다시 시도하거나 관리자에게 문의해 주세요.");
+    }
   };
 
   const start = (id: string, shouldFail: boolean) => {
@@ -79,6 +95,8 @@ export function UploadPanel({ caseId, stage }: { caseId: string; stage: CaseImag
   const guidance = getCaseImageGuidance(stage);
   const persistenceNotice = uploadRuntime === "supabase"
     ? "선택한 사진은 Supabase Storage에 실제 저장되며, 새로고침 후에도 유지됩니다."
+    : uploadRuntime === "development"
+      ? "개발 목업에서는 Supabase Storage를 사용하지 않습니다. 선택한 사진은 현재 세션에서만 미리 볼 수 있습니다."
     : uploadRuntime === "deferred"
       ? "Storage는 아직 활성화되지 않았습니다. 지금 선택한 사진은 저장 전 미리보기이며, Storage 활성화 후 실제 저장됩니다."
       : "명시적으로 주입된 로컬 테스트 저장소를 사용 중입니다. 실제 서비스 화면에서는 Supabase에 저장됩니다.";

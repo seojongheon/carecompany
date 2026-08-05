@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE_BYTES } from "@/features/uploads/model/upload-constraints";
+import { createReviewedWebp } from "@/features/uploads/model/create-reviewed-webp";
 
 export type UploadedCaseFile = {
   originalPath: string;
@@ -9,33 +10,31 @@ export type UploadedCaseFile = {
   sizeBytes: number;
 };
 
-type UploadResult = { ok: true; files: UploadedCaseFile[] } | { ok: false; code: "storage_disabled" | "selection_limit" | "invalid_file" | "processing_failed" | "upload_failed" };
+type UploadResult =
+  | { ok: true; files: UploadedCaseFile[] }
+  | { ok: false; code: "storage_disabled" | "selection_limit" | "invalid_file" | "processing_failed" | "upload_failed" }
+  | { ok: false; code: "cleanup_required"; files: StoredCaseFile[] };
 
-async function createReviewedWebp(file: File): Promise<File> {
-  if (typeof createImageBitmap !== "function") throw new Error("이미지 변환을 지원하지 않는 브라우저입니다.");
-  const bitmap = await createImageBitmap(file);
-  try {
-    const canvas = document.createElement("canvas");
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("이미지 변환 캔버스를 만들 수 없습니다.");
-    context.drawImage(bitmap, 0, 0);
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.9));
-    if (!blob) throw new Error("이미지 검토본을 생성할 수 없습니다.");
-    const baseName = file.name.replace(/\.[^.]+$/, "") || "case-image";
-    return new File([blob], `${baseName}.webp`, { type: "image/webp" });
-  } finally {
-    bitmap.close();
-  }
-}
+type StoredCaseFile = Pick<UploadedCaseFile, "originalPath" | "reviewedPath">;
+type RemoveResult = { ok: true } | { ok: false; code: "storage_disabled" | "remove_failed" };
 
 export function createStorageGateway({ enabled, client, createReviewedFile = createReviewedWebp }: { enabled: boolean; client: SupabaseClient; createReviewedFile?: (file: File) => Promise<File> }) {
+  const removeCaseFiles = async (files: StoredCaseFile[]): Promise<RemoveResult> => {
+    if (!enabled) return { ok: false, code: "storage_disabled" };
+    const originals = files.map(({ originalPath }) => originalPath).filter(Boolean);
+    const reviewed = files.map(({ reviewedPath }) => reviewedPath).filter(Boolean);
+    const [originalResult, reviewedResult] = await Promise.all([
+      originals.length ? client.storage.from("case-originals").remove(originals) : Promise.resolve({ error: null }),
+      reviewed.length ? client.storage.from("case-reviewed-public").remove(reviewed) : Promise.resolve({ error: null }),
+    ]);
+    return originalResult.error || reviewedResult.error ? { ok: false, code: "remove_failed" } : { ok: true };
+  };
+
   return {
     async uploadCaseFiles(caseId: string, files: File[]): Promise<UploadResult> {
       if (!enabled) return { ok: false, code: "storage_disabled" };
       if (files.length > 20) return { ok: false, code: "selection_limit" };
-      if (files.some((file) => file.size > MAX_FILE_SIZE_BYTES || !ALLOWED_IMAGE_TYPES.includes(file.type as (typeof ALLOWED_IMAGE_TYPES)[number]))) {
+      if (files.some((file) => !file.size || file.size > MAX_FILE_SIZE_BYTES || !ALLOWED_IMAGE_TYPES.includes(file.type as (typeof ALLOWED_IMAGE_TYPES)[number]))) {
         return { ok: false, code: "invalid_file" };
       }
 
@@ -45,6 +44,9 @@ export function createStorageGateway({ enabled, client, createReviewedFile = cre
         try {
           reviewed = await createReviewedFile(file);
         } catch {
+          if (uploaded.length && !(await removeCaseFiles(uploaded)).ok) {
+            return { ok: false, code: "cleanup_required", files: uploaded };
+          }
           return { ok: false, code: "processing_failed" };
         }
         const sourceName = file.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
@@ -54,15 +56,24 @@ export function createStorageGateway({ enabled, client, createReviewedFile = cre
         const reviewedPath = `${caseId}/${objectId}-${reviewName}`;
         const originals = client.storage.from("case-originals");
         const originalUpload = await originals.upload(originalPath, file, { upsert: false, contentType: file.type });
-        if (originalUpload.error) return { ok: false, code: "upload_failed" };
+        if (originalUpload.error) {
+          if (uploaded.length && !(await removeCaseFiles(uploaded)).ok) {
+            return { ok: false, code: "cleanup_required", files: uploaded };
+          }
+          return { ok: false, code: "upload_failed" };
+        }
         const reviewUpload = await client.storage.from("case-reviewed-public").upload(reviewedPath, reviewed, { upsert: false, contentType: "image/webp" });
         if (reviewUpload.error) {
-          await originals.remove([originalPath]);
+          const cleanupFiles = [...uploaded, { originalPath, reviewedPath: "" }];
+          if (!(await removeCaseFiles(cleanupFiles)).ok) {
+            return { ok: false, code: "cleanup_required", files: cleanupFiles };
+          }
           return { ok: false, code: "upload_failed" };
         }
         uploaded.push({ originalPath, reviewedPath, mimeType: "image/webp", sizeBytes: reviewed.size });
       }
       return { ok: true, files: uploaded };
     },
+    removeCaseFiles,
   };
 }

@@ -12,6 +12,7 @@ describe("session upload foundation", () => {
   it("blocks unsupported MIME, oversized files, 21-file selections, and a 70th case item", () => {
     expect(validateFileSelection([file("note.txt", "text/plain")], 0).issues[0].code).toBe("unsupported-type");
     expect(validateFileSelection([file("huge.jpg", "image/jpeg", 20 * 1024 * 1024 + 1)], 0).issues[0].code).toBe("file-too-large");
+    expect(validateFileSelection([file("empty.jpg", "image/jpeg", 0)], 0).issues[0].code).toBe("empty-file");
     expect(validateFileSelection(Array.from({ length: 21 }, (_, i) => file(`${i}.jpg`)), 0).issues[0].code).toBe("selection-limit");
     expect(validateFileSelection([file("70.jpg")], 69).issues[0].code).toBe("case-limit");
     expect(validateFileSelection([file("ok.webp", "image/webp")], 68).accepted).toHaveLength(1);

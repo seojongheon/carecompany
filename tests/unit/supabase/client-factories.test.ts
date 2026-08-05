@@ -10,7 +10,7 @@ describe("Supabase client factories", () => {
     expect(createBrowserSupabaseClient(factory, {
       NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
-      SUPABASE_DATABASE_PASSWORD: "must-not-be-forwarded",
+      SUPABASE_DB_PASSWORD: "must-not-be-forwarded",
     })).toBe(client);
     expect(factory).toHaveBeenCalledWith(
       "https://example.supabase.co",

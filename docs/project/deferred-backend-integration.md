@@ -2,8 +2,8 @@
 
 **Purpose:** Preserve every temporary frontend-only decision that must be replaced or verified
 before production deployment.  
-**Current milestone:** Supabase Auth/PostgreSQL/RLS connected; Storage and production operations deferred
-**Last reviewed:** 2026-07-23
+**Current milestone:** Supabase Auth/PostgreSQL/RLS connected; Storage implementation ready for reviewed production activation
+**Last reviewed:** 2026-08-05
 
 No unchecked item in this document may be treated as production-ready.
 
@@ -54,7 +54,7 @@ super-administrator credential exists yet; SMTP, CAPTCHA/rate limits, and produc
 - [x] Add site settings, page content, price items, and content-version storage with
   draft/published separation and protected canonical service keys.
 
-**Current substitute:** Supabase PostgreSQL is active; site-media binary storage remains deferred.
+**Current substitute:** Supabase PostgreSQL is active; Storage migrations are prepared but still require linked-project dry-run, application, and production verification.
 **Completion evidence:** Migration files, generated types, schema tests, and rollback exercise.
 
 ## 3. RLS and privacy boundary
@@ -71,17 +71,16 @@ super-administrator credential exists yet; SMTP, CAPTCHA/rate limits, and produc
 
 ## 4. Image storage and processing
 
-- [ ] Create private original and reviewed public image buckets with scoped policies.
+- [x] Create private original, reviewed case, and landing hero image buckets with scoped policies.
 - [ ] Add the Uppy TUS transport to the existing Uppy Core queue and connect it directly to
   approved storage endpoints.
 - [ ] Validate file count, size, MIME, and actual format on both client and trusted server paths.
-- [ ] Convert HEIC/HEIF, strip EXIF, produce web-ready derivatives, and preserve dimensions.
-- [ ] Use immutable UUID/versioned public paths and prevent original file exposure.
-- [ ] Make partial failure, resume, retry, cleanup, and orphan reconciliation operational.
-- [ ] Revoke public access or remove public derivatives immediately when media/case is private.
+- [ ] Add trusted HEIC/HEIF conversion. Production uploads currently reject both formats, verify JPEG/PNG/WebP signatures in-browser, and re-encode public derivatives as WebP to strip ordinary metadata.
+- [x] Use immutable UUID paths and prevent original file exposure.
+- [ ] Add resumable transport and a scheduled orphan reconciliation operation. Upload rollback, retryable cleanup, and unreferenced landing cleanup are implemented.
+- [x] Revoke new public access immediately when media/case is private by tying signed-URL policy to publication state.
 
-**Current substitute:** Storage is fail-closed in the Supabase repository. Local mock tests retain
-session previews; production displays a connection-waiting state and makes no Storage request.
+**Current substitute:** Storage remains fail-closed until the Vercel production flag is enabled. Case and landing uploads, signed reads, partial-failure cleanup, and access policies are implemented; trusted actual-file sniffing and resumable uploads remain follow-up hardening.
 **Completion evidence:** Storage policies, processing job tests, mobile interruption E2E, and
 privacy inspection of generated files.
 

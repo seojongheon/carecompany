@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { SupabasePortfolioRepository } from "@/features/portfolio/repository/supabase-portfolio-repository";
+import { SupabasePortfolioGateway, SupabasePortfolioRepository } from "@/features/portfolio/repository/supabase-portfolio-repository";
 import type { MockStoreEnvelope } from "@/features/portfolio/model/types";
+import { SEED_SNAPSHOT } from "@/features/portfolio/data/seed";
 
 const snapshot: MockStoreEnvelope = {
   schemaVersion: 1,
@@ -11,6 +12,21 @@ const snapshot: MockStoreEnvelope = {
 };
 
 describe("SupabasePortfolioRepository", () => {
+  it("replaces case media through one transactional database RPC", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
+    const from = vi.fn();
+    const gateway = new SupabasePortfolioGateway({ rpc, from } as never);
+    const media = SEED_SNAPSHOT.media.filter(({ caseId }) => caseId === SEED_SNAPSHOT.cases[0].id).slice(0, 1);
+
+    await gateway.replaceMedia(SEED_SNAPSHOT.cases[0].id, media);
+
+    expect(rpc).toHaveBeenCalledWith("replace_case_media", {
+      case_id: SEED_SNAPSHOT.cases[0].id,
+      media: [expect.objectContaining({ mock_asset_key: "bathroom" })],
+    });
+    expect(from).not.toHaveBeenCalled();
+  });
+
   it("hydrates its synchronous view from the remote gateway and notifies subscribers", async () => {
     const remote = { loadSnapshot: vi.fn().mockResolvedValue(snapshot) };
     const repository = new SupabasePortfolioRepository(remote as never);

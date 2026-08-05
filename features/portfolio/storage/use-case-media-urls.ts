@@ -2,17 +2,29 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import type { CaseMedia } from "@/features/portfolio/model/types";
+import { MOCK_ASSETS } from "@/features/portfolio/data/seed";
+import type { CaseMedia, ServiceKey } from "@/features/portfolio/model/types";
+import { isSupabaseStorageAllowed } from "@/features/uploads/model/upload-runtime";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 30;
 
-export function useCaseMediaUrls(media: CaseMedia[]) {
+export function useCaseMediaUrls(media: CaseMedia[], developmentFallbackKey?: ServiceKey) {
   const [urls, setUrls] = useState<Record<string, string>>({});
-  const signature = media
+  const storageAllowed = isSupabaseStorageAllowed(
+    process.env.NEXT_PUBLIC_SUPABASE_STORAGE_ENABLED === "true",
+    process.env.NODE_ENV,
+  );
+  const signature = storageAllowed ? media
     .filter((item) => item.storagePath)
     .map((item) => `${item.id}:${item.storagePath}`)
-    .join("|");
+    .join("|") : "";
+  const developmentUrls = storageAllowed ? {} : Object.fromEntries(
+    media.flatMap((item) => {
+      const fallback = MOCK_ASSETS[item.mockAssetKey || developmentFallbackKey || ""];
+      return fallback ? [[item.id, fallback]] : [];
+    }),
+  );
   const request = useMemo(() => signature
     ? signature.split("|").map((entry) => {
       const separator = entry.indexOf(":");
@@ -36,5 +48,5 @@ export function useCaseMediaUrls(media: CaseMedia[]) {
     return () => { active = false; };
   }, [signature, request]);
 
-  return request.length ? urls : {};
+  return storageAllowed && request.length ? urls : developmentUrls;
 }

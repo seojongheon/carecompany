@@ -1,11 +1,11 @@
--- DEFERRED: Do not place this file under supabase/migrations or run it until plan readiness is approved.
--- Apply in one reviewed transaction after setting NEXT_PUBLIC_SUPABASE_STORAGE_ENABLED=true only at deployment time.
+-- SUPERSEDED: Historical review artifact. Do not execute.
+-- Use versioned migration 20260805000100_storage_production_readiness.sql instead.
 
 begin;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values
-  ('case-originals', 'case-originals', false, 20971520, array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']),
+  ('case-originals', 'case-originals', false, 20971520, array['image/jpeg', 'image/png', 'image/webp']),
   ('case-reviewed-public', 'case-reviewed-public', false, 20971520, array['image/jpeg', 'image/png', 'image/webp'])
 on conflict (id) do update set
   public = excluded.public,
