@@ -20,9 +20,10 @@ describe("SupabasePortfolioRepository", () => {
 
     await gateway.replaceMedia(SEED_SNAPSHOT.cases[0].id, media);
 
-    expect(rpc).toHaveBeenCalledWith("replace_case_media", {
+    expect(rpc).toHaveBeenCalledWith("save_case_revision", {
       case_id: SEED_SNAPSHOT.cases[0].id,
-      media: [expect.objectContaining({ mock_asset_key: "bathroom" })],
+      expected_revision: 0,
+      patch: { media: [expect.objectContaining({ mockAssetKey: "bathroom" })] },
     });
     expect(from).not.toHaveBeenCalled();
   });

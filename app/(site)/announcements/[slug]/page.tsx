@@ -1,0 +1,7 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getPublishedContent } from "@/features/site-content/server/public-content";
+import { ContentImage } from "@/features/site-content/ui/content-image";
+import { createPageMetadata } from "@/lib/metadata";
+export async function generateMetadata({params}:{params:Promise<{slug:string}>}){const{slug}=await params;const content=await getPublishedContent();const notice=content.announcements?.find(item=>item.key===`announcement:${slug}`);if(!notice)return{};return createPageMetadata({title:notice.title,description:notice.body.slice(0,160),path:`/announcements/${slug}`});}
+export default async function AnnouncementPage({params}:{params:Promise<{slug:string}>}){const{slug}=await params;const content=await getPublishedContent();const notice=content.announcements?.find(item=>item.key===`announcement:${slug}`);if(!notice)notFound();return <main id="main-content" className="page-shell max-w-3xl py-16"><Link href="/announcements" className="inline-flex min-h-11 items-center text-blue-700">공지사항 목록</Link>{notice.pinned&&<p className="mt-6 font-bold text-blue-700">중요 공지</p>}<h1 className="page-title">{notice.title}</h1><p className="mt-4 text-sm text-neutral-500">{new Date(notice.publishedAt).toLocaleDateString("ko-KR")}</p><div className="mt-6"><ContentImage image={notice.image}/></div><div className="mt-8 whitespace-pre-wrap leading-8">{notice.body}</div>{notice.images?.map(image=><div className="mt-6" key={image.id}><ContentImage image={image.image}/></div>)}</main>;}

@@ -1,13 +1,11 @@
-import { LockKeyhole } from "lucide-react";
-
-import { listAdminProfiles } from "@/app/actions/roles";
+import Link from "next/link";
 import { UsersManager } from "@/features/admin/users/users-manager";
-import { getServerAuthContext } from "@/features/auth/server/authorization";
-
-export default async function AdminUsersPage() {
-  const context = await getServerAuthContext();
-  if (!context?.canManageAdministrators) return <section><p className="text-sm font-black text-[var(--brand-700)]">권한 관리</p><h1 className="mt-2 text-3xl font-black">관리자 계정</h1><div className="mt-8 max-w-2xl rounded-2xl border border-amber-200 bg-amber-50 p-6"><LockKeyhole className="text-amber-800" aria-hidden="true" /><h2 className="mt-4 text-xl font-black text-amber-950">슈퍼 관리자 전용 기능입니다</h2><p className="mt-2 leading-7 text-amber-900">기존 고객 계정의 관리자 권한은 활성 슈퍼 관리자만 변경할 수 있습니다.</p></div></section>;
-
-  const result = await listAdminProfiles();
-  return <section><p className="text-sm font-black text-[var(--brand-700)]">권한 관리</p><h1 className="mt-2 text-3xl font-black">관리자 계정</h1><p className="mt-2 text-[var(--neutral-500)]">고객 계정에 관리자 권한을 부여하거나 회수합니다. 모든 변경은 감사 기록에 남습니다.</p>{result.ok ? <UsersManager profiles={result.data} /> : <p role="alert" className="mt-8 rounded-2xl border border-red-200 bg-red-50 p-6 text-red-900">{result.message}</p>}</section>;
+import { requireStaff } from "@/lib/admin/server";
+import type { ManagedProfile } from "@/app/actions/roles";
+export default async function AdminUsersPage({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}) {
+ const {client}=await requireStaff(true);const p=await searchParams;const page=Math.max(1,Number(p.page)||1);
+ const {data,error}=await client.rpc("search_admin_profiles",{search_text:(p.q??"").slice(0,100),role_filter:p.role??"",active_filter:p.active??"",date_from:p.from||null,date_to:p.to||null,page_number:page});
+ const result=data as {items:ManagedProfile[];total:number}|null;
+ const pageLink=(n:number)=>{const params=new URLSearchParams(Object.entries(p).filter((pair):pair is [string,string]=>typeof pair[1]==="string"));params.set("page",String(n));return {pathname:"/admin/users",query:Object.fromEntries(params)};};
+ return <section><p className="eyebrow">회원·권한</p><h1 className="page-title">회원과 운영자</h1><p className="mt-3 text-[var(--neutral-500)]">기존 회원에게 관리자 권한을 부여하거나 계정 상태를 변경합니다. 변경 사유와 이력이 남습니다.</p><form className="my-7 grid gap-3 rounded-2xl border bg-white p-5 sm:grid-cols-2 xl:grid-cols-6"><label className="grid gap-1 text-sm xl:col-span-2">이메일·이름<input className="min-h-11 rounded-xl border px-3" name="q" defaultValue={p.q} maxLength={100}/></label><label className="grid gap-1 text-sm">역할<select className="min-h-11 rounded-xl border px-3" name="role" defaultValue={p.role}><option value="">전체</option><option value="customer">고객</option><option value="admin">관리자</option><option value="super_admin">최고 관리자</option></select></label><label className="grid gap-1 text-sm">계정 상태<select className="min-h-11 rounded-xl border px-3" name="active" defaultValue={p.active}><option value="">전체</option><option value="active">활성</option><option value="suspended">정지</option></select></label><label className="grid gap-1 text-sm">가입 시작일<input name="from" type="date" defaultValue={p.from} className="min-h-11 rounded-xl border px-3"/></label><label className="grid gap-1 text-sm">가입 종료일<input name="to" type="date" defaultValue={p.to} className="min-h-11 rounded-xl border px-3"/></label><button className="min-h-11 rounded-xl bg-[var(--brand-600)] px-5 font-bold text-white">검색</button></form>{error?<p role="alert" className="rounded-xl bg-red-50 p-5">회원을 조회하지 못했습니다. 검색 조건을 확인하고 다시 시도해 주세요.</p>:result?<><p className="text-sm text-[var(--neutral-500)]">총 {result.total}명</p><UsersManager profiles={result.items}/><nav aria-label="회원 목록 페이지" className="mt-6 flex gap-3">{page>1&&<Link className="nav-link" href={pageLink(page-1)}>이전</Link>}{page*20<result.total&&<Link className="nav-link" href={pageLink(page+1)}>다음</Link>}</nav></>:null}</section>;
 }

@@ -1,3 +1,4 @@
+import { NotificationInbox } from "@/features/notifications/ui/notification-inbox";
 import { redirect } from "next/navigation";
 
 import { AdminAppBar } from "@/components/admin/admin-app-bar";
@@ -9,5 +10,5 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
   const context = await getServerAuthContext();
   if (!context?.canAccessAdmin) redirect("/admin/login");
 
-  return <div className="min-h-dvh bg-[var(--neutral-50)]"><AdminSidebar /><AdminAppBar /><main id="main-content" className="p-4 pb-20 lg:ml-64 lg:p-10"><RecoveryNotice />{children}</main></div>;
+  return <div className="min-h-dvh bg-[var(--neutral-50)]"><AdminSidebar role={context.role} /><AdminAppBar role={context.role} email={context.email} notifications={<NotificationInbox />} /><main id="main-content" className="p-4 pb-20 lg:ml-64 lg:p-10"><RecoveryNotice />{children}</main></div>;
 }

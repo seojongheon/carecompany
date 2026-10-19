@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { setUserAdminRole, type ManagedProfile } from "@/app/actions/roles";
 import { Button } from "@/components/ui/button";
@@ -24,11 +25,13 @@ function UserRoleCard({ profile }: { profile: ManagedProfile }) {
 
   return <article className="rounded-2xl border border-[var(--neutral-200)] bg-white p-5">
     <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-black">{profile.display_name || profile.email}</h2><p className="mt-1 text-sm text-[var(--neutral-500)]">{profile.email}</p></div><span className="rounded-full bg-[var(--neutral-100)] px-3 py-1 text-xs font-bold">{profile.role}</span></div>
+    <p className="mt-2 text-xs text-[var(--neutral-500)]">가입일 {new Date(profile.created_at).toLocaleDateString("ko-KR")} · {profile.is_active ? "활성" : "정지"}</p>
+    <Link className="mt-2 inline-flex min-h-11 items-center text-sm font-bold text-[var(--brand-700)]" href={`/admin/users/${profile.id}`}>회원 상세·접수 내역</Link>
     {immutableSuperAdmin ? <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-900">슈퍼 관리자 변경은 웹 화면에서 지원하지 않습니다.</p> : <div className="mt-5 grid gap-4 md:grid-cols-[180px_140px_1fr_auto] md:items-end">
       <div><Label htmlFor={`role-${profile.id}`}>권한</Label><select id={`role-${profile.id}`} className="min-h-11 w-full rounded-xl border px-3" value={role} onChange={(event) => setRole(event.target.value as "customer" | "admin")}><option value="customer">고객</option><option value="admin">관리자</option></select></div>
       <label className="flex min-h-11 items-center gap-2 text-sm font-bold"><input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} />활성 계정</label>
       <div><Label htmlFor={`reason-${profile.id}`}>변경 사유</Label><Input id={`reason-${profile.id}`} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="3자 이상 입력" /></div>
-      <Button disabled={pending || reason.trim().length < 3} onClick={() => startTransition(async () => { const result = await setUserAdminRole({ targetId: profile.id, newRole: role, active, reason }); setMessage(result.ok ? "권한을 변경하고 감사 기록을 남겼습니다." : result.message); if (result.ok) { setReason(""); router.refresh(); } })}>{pending ? "변경 중..." : "권한 변경"}</Button>
+      <Button disabled={pending || reason.trim().length < 3} onClick={() => startTransition(async () => { if (!window.confirm(`${profile.email} 계정을 ${role === "admin" ? "관리자" : "고객"}, ${active ? "활성" : "정지"} 상태로 변경할까요?`)) return; const result = await setUserAdminRole({ targetId: profile.id, newRole: role, active, reason }); setMessage(result.ok ? "권한을 변경하고 감사 기록을 남겼습니다." : result.message); if (result.ok) { setReason(""); router.refresh(); } })}>{pending ? "변경 중..." : "권한 변경"}</Button>
     </div>}
     {message ? <p className="mt-3 text-sm font-semibold" role="status">{message}</p> : null}
   </article>;

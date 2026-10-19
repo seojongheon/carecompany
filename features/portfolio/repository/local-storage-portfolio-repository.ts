@@ -1,3 +1,4 @@
+import { selectAdminSnapshot, applyRevisionPatch, type CaseRevisionPatch, type CaseManifest } from "../model/case-revisions";
 import { MockStoreEnvelopeSchema, PortfolioCaseSchema } from "../model/schemas";
 import type {
   AdminCaseFilter,
@@ -10,6 +11,7 @@ import type {
   PublishIssueCode,
   PublishResult,
   UpdateCaseInput,
+  Tag,
 } from "../model/types";
 import {
   selectAdminCaseById,
@@ -103,11 +105,11 @@ export class LocalStoragePortfolioRepository implements PortfolioRepository {
   }
 
   listAdminCases(filter: AdminCaseFilter) {
-    return clone(selectAdminCases(this.snapshot, filter));
+    return clone(selectAdminCases(selectAdminSnapshot(this.snapshot), filter));
   }
 
   getAdminCaseById(id: string) {
-    return clone(selectAdminCaseById(this.snapshot, id));
+    return clone(selectAdminCaseById(selectAdminSnapshot(this.snapshot), id));
   }
 
   createDraft(input: CreateDraftInput) {
@@ -151,55 +153,52 @@ export class LocalStoragePortfolioRepository implements PortfolioRepository {
   }
 
   updateCase(id: string, patch: UpdateCaseInput) {
-    const current = this.requireCase(id);
-    const updated = PortfolioCaseSchema.parse({ ...current, ...patch, updatedAt: new Date().toISOString() });
-    if (this.snapshot.cases.some((item) => item.id !== id && item.slug === updated.slug)) {
-      throw new Error("이미 사용 중인 사례 경로입니다.");
-    }
-    this.commit({
-      ...this.snapshot,
-      cases: this.snapshot.cases.map((item) => (item.id === id ? updated : item)),
-    });
-    return clone(updated);
+    const manifest = this.saveRevision(id, { case: patch });
+    return clone(manifest.case);
   }
-
-  setCaseMedia(id: string, media: CaseMedia[]) {
-    const current = this.requireCase(id);
-    const reviewed = this.requireFreshReview(current);
-    const next = {
-      ...this.snapshot,
-      cases: this.snapshot.cases.map((item) => item.id === id ? reviewed : item),
-      media: [...this.snapshot.media.filter(({ caseId }) => caseId !== id), ...media.map((item) => ({ ...item, caseId: id }))],
-    };
-    this.commit(next);
-    return clone(next.media.filter(({ caseId }) => caseId === id));
-  }
-
-  setCaseVideos(id: string, videos: CaseVideo[]) {
-    const current = this.requireCase(id);
-    const reviewed = this.requireFreshReview(current);
-    const next = {
-      ...this.snapshot,
-      cases: this.snapshot.cases.map((item) => item.id === id ? reviewed : item),
-      videos: [...this.snapshot.videos.filter(({ caseId }) => caseId !== id), ...videos.map((item) => ({ ...item, caseId: id }))],
-    };
-    this.commit(next);
-    return clone(next.videos.filter(({ caseId }) => caseId === id));
-  }
-
+  setCaseMedia(id: string, media: CaseMedia[]) { return clone(this.saveRevision(id, { media }).media); }
+  setCaseVideos(id: string, videos: CaseVideo[]) { return clone(this.saveRevision(id, { videos }).videos); }
   setCaseTags(id: string, tagIds: string[]) {
+    const current = this.getAdminCaseById(id)!;
+    if (tagIds.some(tagId => !this.snapshot.tags.some(tag => tag.id === tagId && tag.serviceId === current.serviceId))) throw new Error("사례와 태그의 서비스가 일치하지 않습니다.");
+    return clone(this.saveRevision(id, { tagIds: [...new Set(tagIds)] }).tagIds);
+  }
+  private manifestFor(id: string): CaseManifest {
+    const current = this.getAdminCaseById(id);
+    if (!current) throw new Error("사례를 찾을 수 없습니다.");
+    return { case: current, media: current.media, videos: current.videos, tagIds: current.tags.map(t => t.id) };
+  }
+  private saveRevision(id: string, patch: CaseRevisionPatch) {
     const current = this.requireCase(id);
-    const unique = [...new Set(tagIds)];
-    if (unique.some((tagId) => !this.snapshot.tags.some((tag) => tag.id === tagId && tag.serviceId === current.serviceId))) {
-      throw new Error("사례와 태그의 서비스가 일치하지 않습니다.");
-    }
-    this.commit({ ...this.snapshot, caseTagIds: { ...this.snapshot.caseTagIds, [id]: unique } });
-    return clone(unique);
+    if (current.status === "deleted") throw new Error("휴지통에서 먼저 복원해 주세요.");
+    const manifest = applyRevisionPatch(this.manifestFor(id), patch);
+    if (this.snapshot.cases.some(item => item.id !== id && item.slug === manifest.case.slug)) throw new Error("이미 사용 중인 사례 경로입니다.");
+    manifest.case.updatedAt = new Date().toISOString();
+    const revision = (current.revision ?? 0) + 1;
+    this.commit({ ...this.snapshot, cases: this.snapshot.cases.map(item => item.id === id ? { ...item, revision, hasDraft: true } : item), drafts: { ...this.snapshot.drafts, [id]: { revision, manifest } } });
+    return manifest;
+  }
+  discardDraft(id: string) {
+    const drafts = { ...this.snapshot.drafts }; delete drafts[id];
+    this.commit({ ...this.snapshot, drafts, cases: this.snapshot.cases.map(item => item.id === id ? { ...item, hasDraft: false, revision: (item.revision ?? 0) + 1 } : item) });
+  }
+  restoreHistory(id: string, historyId: string) {
+    const history = this.snapshot.history?.[id]?.find(item => item.id === historyId);
+    if (!history) throw new Error("이력을 찾을 수 없습니다.");
+    this.saveRevision(id, history.manifest);
+  }
+  restoreDeleted(id: string) {
+    const current = this.requireCase(id);
+    this.commit({ ...this.snapshot, cases: this.snapshot.cases.map(item => item.id === id ? { ...current, status: "private", publishedAt: null } : item) });
+  }
+  saveTag(tag: Tag) {
+    this.commit({ ...this.snapshot, tags: [...this.snapshot.tags.filter(item => item.id !== tag.id), tag] });
   }
 
   publishCase(id: string): PublishResult {
-    const current = this.requireCase(id);
-    const media = this.snapshot.media.filter(({ caseId }) => caseId === id);
+    const current = this.getAdminCaseById(id)!;
+    const admin = selectAdminSnapshot(this.snapshot);
+    const media = admin.media.filter(({ caseId }) => caseId === id);
     const issues: Array<{ code: PublishIssueCode; message: string }> = [];
     if (current.status === "deleted") issues.push({ code: "deleted-case", message: "삭제된 사례는 공개할 수 없습니다." });
     if (!current.title.trim()) issues.push({ code: "missing-title", message: "제목을 입력해 주세요." });
@@ -223,6 +222,8 @@ export class LocalStoragePortfolioRepository implements PortfolioRepository {
     const published = PortfolioCaseSchema.parse({
       ...current,
       status: "published",
+      hasDraft: false,
+      revision: (current.revision ?? 0) + 1,
       publishedAt: now,
       updatedAt: now,
       privacyChecklist: {
@@ -231,10 +232,9 @@ export class LocalStoragePortfolioRepository implements PortfolioRepository {
         hasPublicReadyMedia: true,
       },
     });
-    this.commit({
-      ...this.snapshot,
-      cases: this.snapshot.cases.map((item) => (item.id === id ? published : item)),
-    });
+    const drafts = { ...this.snapshot.drafts }; delete drafts[id];
+    const history = { ...this.snapshot.history, [id]: [...(this.snapshot.history?.[id] ?? []), { id: newId(), revision: published.revision ?? 1, createdAt: now, manifest: this.manifestFor(id) }] };
+    this.commit({ ...this.snapshot, drafts, history, media: [...this.snapshot.media.filter(item => item.caseId !== id), ...admin.media.filter(item => item.caseId === id)], videos: [...this.snapshot.videos.filter(item => item.caseId !== id), ...admin.videos.filter(item => item.caseId === id)], caseTagIds: { ...this.snapshot.caseTagIds, [id]: admin.caseTagIds[id] ?? [] }, cases: this.snapshot.cases.map(item => item.id === id ? published : item) });
     return { ok: true, case: clone(published) };
   }
 
@@ -271,17 +271,6 @@ export class LocalStoragePortfolioRepository implements PortfolioRepository {
     const item = this.snapshot.cases.find((portfolioCase) => portfolioCase.id === id);
     if (!item) throw new Error("사례를 찾을 수 없습니다.");
     return item;
-  }
-
-  private requireFreshReview(item: PortfolioCase) {
-    if (item.status !== "published") return item;
-    return PortfolioCaseSchema.parse({
-      ...item,
-      status: "private",
-      publishedAt: null,
-      updatedAt: new Date().toISOString(),
-      privacyChecklist: { ...item.privacyChecklist, publicMediaReviewed: false },
-    });
   }
 
   private commit(next: MockStoreEnvelope) {

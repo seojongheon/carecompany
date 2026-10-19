@@ -1,0 +1,12 @@
+import {act,fireEvent,render,screen} from "@testing-library/react";
+import {afterEach,beforeEach,describe,expect,it,vi} from "vitest";
+import {NotificationInbox} from "@/features/notifications/ui/notification-inbox";
+const notification={id:"20000000-0000-4000-8000-000000000001",event_type:"inquiry.created",title:"새 문의가 접수되었습니다.",target_path:"/admin/inquiries/20000000-0000-4000-8000-000000000002",read_at:null,created_at:"2026-10-19T00:00:00Z"};
+const fetchMock=vi.fn();
+beforeEach(()=>{vi.useFakeTimers();vi.stubGlobal("fetch",fetchMock);fetchMock.mockReset();fetchMock.mockResolvedValue({ok:true,json:async()=>({items:[notification],unread:1})});Object.defineProperty(document,"visibilityState",{configurable:true,value:"visible"});});
+afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
+describe("operator inbox",()=>{
+ it("refreshes after sixty seconds only while visible",async()=>{render(<NotificationInbox/>);await act(async()=>{await vi.advanceTimersByTimeAsync(0);});fireEvent.click(screen.getByText("알림"));expect(screen.getByText(notification.title)).toBeVisible();expect(fetchMock).toHaveBeenCalledTimes(1);await act(async()=>{await vi.advanceTimersByTimeAsync(60000);});expect(fetchMock).toHaveBeenCalledTimes(2);Object.defineProperty(document,"visibilityState",{configurable:true,value:"hidden"});await act(async()=>{await vi.advanceTimersByTimeAsync(60000);});expect(fetchMock).toHaveBeenCalledTimes(2);});
+ it("marks all owned notices read and updates the visible badge",async()=>{render(<NotificationInbox/>);await act(async()=>{await vi.advanceTimersByTimeAsync(0);});fireEvent.click(screen.getByText("알림"));expect(screen.getByLabelText("읽지 않은 알림 1개")).toBeVisible();fetchMock.mockResolvedValue({ok:true,json:async()=>({items:[{...notification,read_at:"2026-10-19T01:00:00Z"}],unread:0})});await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"모두 읽음"}));});expect(screen.queryByLabelText("읽지 않은 알림 1개")).not.toBeInTheDocument();expect(fetchMock).toHaveBeenCalledWith("/api/notifications",expect.objectContaining({method:"PATCH",body:JSON.stringify({id:null})}));});
+ it("shows a load failure without displaying a fabricated empty inbox",async()=>{fetchMock.mockResolvedValue({ok:false,json:async()=>({error:"offline"})});render(<NotificationInbox/>);await act(async()=>{await vi.advanceTimersByTimeAsync(0);});fireEvent.click(screen.getByText("알림"));expect(screen.getByRole("alert")).toHaveTextContent("불러오지 못했습니다");expect(screen.queryByText("알림이 없습니다.")).not.toBeInTheDocument();});
+});

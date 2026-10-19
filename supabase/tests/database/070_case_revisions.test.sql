@@ -1,0 +1,42 @@
+begin;
+select plan(26);
+select has_table('public','case_revision_drafts','separate case drafts exist');
+select has_table('public','case_revision_history','immutable publication history exists');
+select ok(not has_table_privilege('authenticated','public.portfolio_cases','UPDATE'),'direct projection updates forbidden');
+select ok(not has_table_privilege('authenticated','public.case_media','INSERT'),'direct media insertion forbidden');
+select ok(not has_table_privilege('anon','public.case_revision_drafts','SELECT'),'anonymous cannot read drafts');
+select function_privs_are('public','publish_case',array['uuid'],'authenticated',array[]::text[],'legacy publish is blocked');
+select function_privs_are('public','publish_case_revision',array['uuid','bigint'],'anon',array[]::text[],'anonymous publish is blocked');
+
+insert into auth.users(id,email,raw_user_meta_data) values('09000000-0000-4000-8000-000000000001','case-revision-staff@example.test','{}');
+select set_config('app.allow_role_change','true',true);
+update public.profiles set role='admin' where id='09000000-0000-4000-8000-000000000001';
+select set_config('request.jwt.claim.sub','09000000-0000-4000-8000-000000000001',true);
+insert into public.portfolio_cases(id,service_id,slug,title,location_display,status,published_at,privacy_checklist)
+values('09000000-0000-4000-8000-000000000002','11111111-1111-4111-8111-111111111111','revision-test-case','Published title','천안','published',now(),'{"noIdentifiablePeople":true,"noVehiclePlates":true,"noDetailedAddressOrContact":true,"noPrivateDocumentsOrBelongings":true,"publicMediaReviewed":true}');
+select set_config('app.allow_published_asset_change','true',true);
+insert into public.case_media(id,case_id,stage,is_cover,is_public,alt_text,width,height,mime_type,size_bytes,upload_status,mock_asset_key)
+values('09000000-0000-4000-8000-000000000003','09000000-0000-4000-8000-000000000002','after',true,true,'Reviewed image',1600,1200,'image/webp',100,'ready','bathroom');
+select set_config('app.allow_published_asset_change','false',true);
+set local role authenticated;
+select lives_ok($$select public.save_case_revision('09000000-0000-4000-8000-000000000002',0,'{"case":{"title":"Draft title","updatedBy":"spoofed-editor"}}')$$,'draft save succeeds');
+select is((select title from public.portfolio_cases where id='09000000-0000-4000-8000-000000000002'),'Published title','draft body never changes public projection');
+select is((select manifest#>>'{case,title}' from public.case_revision_drafts where case_id='09000000-0000-4000-8000-000000000002'),'Draft title','draft contains edited title');
+select is((select manifest#>>'{case,updatedBy}' from public.case_revision_drafts where case_id='09000000-0000-4000-8000-000000000002'),'09000000-0000-4000-8000-000000000001','draft editor always comes from the authenticated actor');
+select is((select updated_by::text from public.portfolio_cases where id='09000000-0000-4000-8000-000000000002'),null::text,'draft editor does not replace the published editor');
+select throws_ok($$select public.save_case_revision('09000000-0000-4000-8000-000000000002',0,'{}')$$,'P0001','case_revision_conflict','stale save returns a non-retryable application conflict');
+select lives_ok($$select public.publish_case_revision('09000000-0000-4000-8000-000000000002',1)$$,'atomic republish succeeds');
+select is((select title from public.portfolio_cases where id='09000000-0000-4000-8000-000000000002'),'Draft title','new body published');
+select is((select count(*)::int from public.case_revision_drafts where case_id='09000000-0000-4000-8000-000000000002'),0,'successful publish clears draft');
+select is((select count(*)::int from public.case_revision_history where case_id='09000000-0000-4000-8000-000000000002'),1,'publish preserves history');
+select lives_ok($$select public.transition_case_revision('09000000-0000-4000-8000-000000000002',2,'trash')$$,'trash succeeds');
+select lives_ok($$select public.transition_case_revision('09000000-0000-4000-8000-000000000002',3,'restore')$$,'restore succeeds');
+select is((select status::text from public.portfolio_cases where id='09000000-0000-4000-8000-000000000002'),'private','trash restores as private');
+select is((select revision::int from public.case_revision_drafts where case_id='09000000-0000-4000-8000-000000000002'),4,'restored draft matches case revision');
+select lives_ok($$select public.publish_case_revision('09000000-0000-4000-8000-000000000002',4)$$,'restored case can publish without an unrelated edit');
+select lives_ok($$select public.transition_case_revision('09000000-0000-4000-8000-000000000002',5,'unpublish')$$,'published case can become private');
+select is((select revision::int from public.case_revision_drafts where case_id='09000000-0000-4000-8000-000000000002'),6,'unpublished case prepares matching draft');
+select lives_ok($$select public.restore_case_revision('09000000-0000-4000-8000-000000000002',(select id from public.case_revision_history where case_id='09000000-0000-4000-8000-000000000002' limit 1),6)$$,'history restores to draft');
+select is((select status::text from public.portfolio_cases where id='09000000-0000-4000-8000-000000000002'),'private','restoring history never republishes');
+select * from finish();
+rollback;

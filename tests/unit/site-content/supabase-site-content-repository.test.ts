@@ -46,6 +46,11 @@ describe("SupabaseSiteContentRepository", () => {
     expect(client.rpc).toHaveBeenCalledWith("get_published_site_content");
   });
 
+  it("rejects incomplete published projections instead of filling missing documents with seed content", async () => {
+    const client={rpc:vi.fn().mockResolvedValue({data:{faq:[]},error:null})};
+    await expect(new SupabaseSiteContentGateway(client as never).loadSnapshot()).rejects.toThrow("공개 문서가 누락되었습니다");
+  });
+
   it("resolves only the published hero Storage path to a short-lived URL for public content", async () => {
     const publicContent = structuredClone(SITE_CONTENT_SEED_SNAPSHOT.published);
     publicContent.home.heroImageStoragePath = "hero/published.webp";

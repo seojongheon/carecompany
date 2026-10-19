@@ -49,6 +49,14 @@ describe("SupabaseAuthRepository", () => {
     expect(repository.getSession()).toBeNull();
   });
 
+  it("rejects suspended customers without exposing account state", async () => {
+    const client = authClient();
+    const repository = new SupabaseAuthRepository(client, async () => ({ id: "user-1", email: "owner@example.com", role: "customer", is_active: false }));
+    expect(await repository.signInCustomer({ email: "owner@example.com", password: "Safe-password-2026" })).toEqual({ ok: false, message: "이메일 또는 비밀번호를 확인해 주세요." });
+    expect(repository.getSession()).toBeNull();
+    expect(client.auth.signOut).toHaveBeenCalled();
+  });
+
   it("always returns the same password recovery response", async () => {
     const client = authClient({ resetPasswordForEmail: vi.fn().mockResolvedValue({ data: null, error: new Error("missing") }) });
     const repository = new SupabaseAuthRepository(client, async () => null, () => "https://care.example");

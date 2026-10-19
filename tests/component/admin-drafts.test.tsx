@@ -10,13 +10,16 @@ import { PortfolioProvider } from "@/features/portfolio/repository/portfolio-pro
 import { AdminCaseForm } from "@/features/portfolio/ui/admin-case-form";
 import { AdminCaseList } from "@/features/portfolio/ui/admin-case-list";
 
+vi.mock("next/navigation",()=>({usePathname:()=>"/admin"}));
+const dashboardData={date:"2026-10-19",cases:{total:20,published:16,private:4,drafts:0,media:69},inquiries:{new:0,open:0,mine:0,unassigned:0},pendingContent:0,failedUploads:0,failedCleanup:0,visits:{startedAt:null,visitors:0,visits:0,pageViews:0,days:[],pages:[],sources:[],devices:[]},recentCases:[],recentInquiries:[],recentContent:[]};
+
 describe("admin draft flows", () => {
   beforeEach(() => localStorage.clear());
 
   it("shows dashboard statistics and filters private drafts without login", async () => {
     const user = userEvent.setup();
     const repository = new LocalStoragePortfolioRepository(localStorage, SEED_SNAPSHOT);
-    render(<PortfolioProvider repository={repository}><AdminDashboard /><AdminCaseList /></PortfolioProvider>);
+    render(<PortfolioProvider repository={repository}><AdminDashboard data={dashboardData} /><AdminCaseList /></PortfolioProvider>);
 
     expect(screen.getByText("전체 사례").closest("article")).toHaveTextContent("20");
     expect(screen.getByText("공개 사례").closest("article")).toHaveTextContent("16");
@@ -26,7 +29,7 @@ describe("admin draft flows", () => {
 
   it("starts creation from case management instead of a separate dashboard or menu shortcut", () => {
     const repository = new LocalStoragePortfolioRepository(localStorage, SEED_SNAPSHOT);
-    render(<PortfolioProvider repository={repository}><AdminDashboard /><AdminSidebar /><AdminCaseList /></PortfolioProvider>);
+    render(<PortfolioProvider repository={repository}><AdminDashboard data={dashboardData} /><AdminSidebar /><AdminCaseList /></PortfolioProvider>);
 
     expect(screen.getByRole("link", { name: "사례 추가" })).toHaveAttribute("href", "/admin/portfolio/new");
     expect(screen.queryByRole("link", { name: /새 사례/ })).not.toBeInTheDocument();
@@ -60,8 +63,8 @@ describe("admin draft flows", () => {
 
     expect(screen.getByLabelText("자동 생성된 사례 주소")).toHaveValue(`/portfolio/${draft.slug}`);
     expect(screen.getByLabelText("자동 생성된 사례 주소")).toHaveAttribute("readonly");
-    expect(screen.queryByLabelText("SEO 제목")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("SEO 설명")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("SEO 제목")).toBeInTheDocument();
+    expect(screen.getByLabelText("SEO 설명")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "SEO 정보" })).not.toBeInTheDocument();
     const title = screen.getByLabelText("사례 제목");
     await user.clear(title);

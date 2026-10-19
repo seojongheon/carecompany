@@ -1,9 +1,10 @@
-export interface HomeContent { eyebrow: string; title: string; description: string; primaryCtaLabel: string; primaryCtaHref: string; heroImageAlt: string; heroAssetKey: string; heroImageUrl?: string; heroImageStoragePath?: string; }
-export interface PriceItem { id: string; serviceKey: string; name: string; priceLabel: string; conditions: string[]; visible: boolean; sortOrder: number; }
-export interface ProcessStep { id: string; title: string; description: string; visible: boolean; sortOrder: number; }
-export interface AboutContent { title: string; description: string; values: Array<{ id: string; title: string; description: string }>; }
+import type { AnnouncementDocument, ContentImage, FaqDocument, PolicyDocument, ServiceDocument, SettingsDocument } from "./documents";
+export interface HomeContent { eyebrow: string; title: string; description: string; primaryCtaLabel: string; primaryCtaHref: string; heroImageAlt: string; heroAssetKey: string; heroImageUrl?: string; heroImageStoragePath?: string; image?: ContentImage & { url?: string }; sections?: Array<{id:string; title:string; description:string; visible:boolean; sortOrder:number}>; recommendations?: string[]; blocks?:Array<{key:"services"|"recent"|"recommendations"|"additional";visible:boolean;sortOrder:number}>; }
+export interface PriceItem { id: string; serviceKey: string; name: string; priceLabel: string; unit?:string; minPrice?:number|null; maxPrice?:number|null; inclusions?:string[]; exclusions?:string[]; conditions: string[]; visible: boolean; sortOrder: number; }
+export interface ProcessStep { image?:ContentImage & {url?:string}; id: string; title: string; description: string; visible: boolean; sortOrder: number; }
+export interface AboutContent { image?:ContentImage & {url?:string}; ctaLabel?:string; ctaHref?:string; title: string; description: string; values: Array<{ id: string; title: string; description: string }>; }
 export interface SiteSettings { businessName: string; footerDescription: string; contactLabel: string; contactHref: string; }
-export interface SiteContent { home: HomeContent; pricingLead: string; priceItems: PriceItem[]; processSteps: ProcessStep[]; about: AboutContent; settings: SiteSettings; }
+export interface SiteContent { home: HomeContent; pricingLead: string; priceItems: PriceItem[]; processSteps: ProcessStep[]; about: AboutContent; settings: SiteSettings & Partial<SettingsDocument>; process?: {title:string; description:string}; services?:ServiceDocument[]; faq?:FaqDocument["items"]; policy?:PolicyDocument; announcements?: Array<AnnouncementDocument & {key:string; publishedAt:string}>; }
 export interface SiteContentVersion { id: string; createdAt: string; content: SiteContent; }
 export interface SiteContentSnapshot { draft: SiteContent; published: SiteContent; versions: SiteContentVersion[]; }
 export type PublishContentResult = { ok: true } | { ok: false; issues: string[] };

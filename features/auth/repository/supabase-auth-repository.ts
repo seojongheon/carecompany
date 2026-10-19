@@ -115,7 +115,7 @@ export class SupabaseAuthRepository implements AuthRepository {
       return { ok: false, message: genericCredentialError };
     }
     await this.acceptProviderSession({ ...data.session, user: data.user });
-    if (requireAdmin && (!this.session?.isActive || !["admin", "super_admin"].includes(this.session.role))) {
+    if (!this.session?.isActive || (requireAdmin && !["admin", "super_admin"].includes(this.session.role))) {
       await this.client.auth.signOut();
       this.setSession(null);
       return { ok: false, message: genericCredentialError };
@@ -130,7 +130,7 @@ export class SupabaseAuthRepository implements AuthRepository {
       return;
     }
     const profile = await this.loadProfile(user.id);
-    if (!profile) {
+    if (!profile || !profile.is_active) {
       this.setSession(null);
       return;
     }

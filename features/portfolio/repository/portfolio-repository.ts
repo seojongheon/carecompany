@@ -13,6 +13,7 @@ import type {
   PublishResult,
   Service,
   UpdateCaseInput,
+  Tag,
 } from "../model/types";
 
 export interface PortfolioRepository {
@@ -33,5 +34,9 @@ export interface PortfolioRepository {
   publishCase(id: string): PublishResult | Promise<PublishResult>;
   unpublishCase(id: string): PortfolioCase | Promise<PortfolioCase>;
   softDeleteCase(id: string): void | Promise<void>;
+  discardDraft?(id: string): void | Promise<void>;
+  restoreHistory?(id: string, historyId: string): void | Promise<void>;
+  restoreDeleted?(id: string): void | Promise<void>;
+  saveTag?(tag: Tag): void | Promise<void>;
   resetToSeed(): void | Promise<void>;
 }

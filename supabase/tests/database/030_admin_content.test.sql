@@ -20,7 +20,7 @@ select function_returns('public', 'soft_delete_case', array['uuid'], 'portfolio_
 select function_returns('public', 'publish_site_content', array[]::text[], 'jsonb', 'site publish returns content');
 
 select function_privs_are('public', 'publish_case', array['uuid'], 'anon', array[]::text[], 'anonymous cannot publish cases');
-select function_privs_are('public', 'publish_case', array['uuid'], 'authenticated', array['EXECUTE'], 'authenticated role is checked inside publish RPC');
+select function_privs_are('public', 'publish_case', array['uuid'], 'authenticated', array[]::text[], 'legacy publish RPC cannot bypass revision checks');
 select function_privs_are('public', 'publish_site_content', array[]::text[], 'anon', array[]::text[], 'anonymous cannot publish site content');
 select ok((select relrowsecurity from pg_class where oid = 'public.site_content_versions'::regclass), 'site versions RLS enabled');
 

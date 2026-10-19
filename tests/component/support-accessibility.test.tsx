@@ -24,10 +24,10 @@ describe("supporting content and accessibility", () => {
     expect(screen.getByRole("heading", { name: "서비스별로 달라지는 점" })).toBeInTheDocument();
   });
 
-  it("keeps the visual-only estimate affordance labelled and touch-sized", () => {
+  it("opens the inquiry form from a labelled touch-sized link", () => {
     render(<EstimateFab />);
-    const button = screen.getByRole("button", { name: "사진 견적 열기 (준비 중)" });
+    const button = screen.getByRole("link", { name: "견적 문의" });
     expect(button.className).toContain("min-h-12");
-    expect(button).toHaveAttribute("title", "견적 기능은 추후 연결됩니다");
+    expect(button).toHaveAttribute("href", "/inquiry");
   });
 });

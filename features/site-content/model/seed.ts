@@ -12,7 +12,11 @@ export const SITE_CONTENT_SEED: SiteContent = {
   processSteps: [
     { id: "process-1", title: "요청 내용 확인", description: "필요한 서비스와 공간, 불편한 점을 먼저 확인합니다.", visible: true, sortOrder: 1 },
     { id: "process-2", title: "사진과 범위 확인", description: "재질과 오염 상태를 보고 작업 가능 범위를 나눕니다.", visible: true, sortOrder: 2 },
-    { id: "process-3", title: "결과 안내", description: "작업한 범위와 관리 시 주의할 점을 정리해 안내합니다.", visible: true, sortOrder: 3 },
+    { id: "process-3", title: "현장 조건 점검", description: "동선, 물 사용, 안전한 접근 조건을 확인합니다.", visible: true, sortOrder: 3 },
+    { id: "process-4", title: "보호와 준비", description: "주변 물품과 작업 구역을 구분하고 필요한 보호 조치를 합니다.", visible: true, sortOrder: 4 },
+    { id: "process-5", title: "구역별 작업", description: "오염과 재질에 맞는 도구로 정한 순서에 따라 진행합니다.", visible: true, sortOrder: 5 },
+    { id: "process-6", title: "상태 재확인", description: "놓친 부분과 물기, 주변 정리 상태를 다시 살핍니다.", visible: true, sortOrder: 6 },
+    { id: "process-7", title: "결과 안내", description: "작업한 범위와 관리 시 주의할 점을 정리해 안내합니다.", visible: true, sortOrder: 7 },
   ],
   about: { title: "보이는 결과와 확인 가능한 과정", description: "위생의 기술은 천안·아산을 중심으로 현장을 살피고 필요한 범위를 정직하게 안내합니다.", values: [{ id: "value-1", title: "필요한 범위부터", description: "과도한 약속보다 현장 상태와 가능한 작업 범위를 먼저 확인합니다." }, { id: "value-2", title: "과정이 남도록", description: "작업 전·과정·후 사진을 구분해 결과를 쉽게 비교합니다." }, { id: "value-3", title: "공개는 조심스럽게", description: "개인정보가 없는 자료만 공개합니다." }] },
   settings: { businessName: "위생의 기술", footerDescription: "천안·아산을 중심으로 현장을 살피고 필요한 범위를 정직하게 안내하는 청소 서비스입니다.", contactLabel: "작업 사례 보기", contactHref: "/portfolio" },
