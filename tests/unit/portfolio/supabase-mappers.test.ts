@@ -20,4 +20,10 @@ describe("Supabase portfolio mappers", () => {
       upload_status: "ready", mock_asset_key: null, storage_path: "case-1/review.webp", original_storage_path: "case-1/original.jpg",
     })).toMatchObject({ storagePath: "case-1/review.webp", originalStoragePath: "case-1/original.jpg", mockAssetKey: "" });
   });
+
+  it("retains the trusted last editor and leaves legacy authors absent", () => {
+    const actor = "00000000-0000-4000-8000-000000000001";
+    expect(mapPortfolioCaseRow({ updated_by: actor })).toHaveProperty("updatedBy", actor);
+    expect(mapPortfolioCaseRow({ updated_by: null })).toHaveProperty("updatedBy", undefined);
+  });
 });

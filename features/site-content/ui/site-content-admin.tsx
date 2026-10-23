@@ -1,55 +1,15 @@
 "use client";
-
-import { useState } from "react";
-
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { useSiteContent } from "../repository/site-content-provider";
-import { LandingHeroImageManager } from "./landing-hero-image-manager";
-
-export function SiteContentAdmin() {
-  const { snapshot, updateDraft, saveDraft, publish, restoreVersion } = useSiteContent();
-  const [tab, setTab] = useState<"home" | "pricing" | "settings">("home");
-  const [notice, setNotice] = useState<string | null>(null);
-  const draft = snapshot.draft;
-
-  const save = async () => setNotice(await saveDraft()
-    ? "초안을 저장했습니다. 고객 화면에는 아직 반영되지 않습니다."
-    : "초안을 저장하지 못했습니다. 관리자 권한을 확인해 주세요.");
-  const publishContent = async () => {
-    const result = await publish();
-    setNotice(result.ok ? "게시했습니다. 고객 화면에 새 콘텐츠가 반영됩니다." : result.issues.join(" "));
-  };
-
-  return <div className="mx-auto max-w-5xl">
-    <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-black text-[var(--brand-700)]">SITE CONTENT</p><h1 className="mt-2 text-3xl font-black">홈페이지 관리</h1><p className="mt-2 text-[var(--neutral-500)]">문구, 가격, 공통 정보를 수정하고 게시합니다. 페이지 구조와 디자인은 고정됩니다.</p></div><div className="flex gap-2"><Button variant="secondary" onClick={save}>초안 저장</Button><Button onClick={publishContent}>변경 사항 게시</Button></div></div>
-    {notice ? <p role="status" className="mt-5 rounded-xl border border-[var(--brand-200)] bg-[var(--brand-50)] p-4 text-sm font-semibold">{notice}</p> : null}
-    <div className="mt-7 flex flex-wrap gap-2" role="tablist">{(["home", "pricing", "settings"] as const).map((item) => <Button key={item} variant={tab === item ? "primary" : "secondary"} size="sm" onClick={() => setTab(item)}>{item === "home" ? "홈" : item === "pricing" ? "가격 안내" : "사이트 설정"}</Button>)}</div>
-
-    {tab === "home" ? <section className="mt-6 grid gap-5 rounded-2xl border bg-white p-5 md:grid-cols-2">
-      <Field label="히어로 제목"><Input value={draft.home.title} onChange={(event) => updateDraft({ home: { ...draft.home, title: event.target.value } })} /></Field>
-      <Field label="Eyebrow"><Input value={draft.home.eyebrow} onChange={(event) => updateDraft({ home: { ...draft.home, eyebrow: event.target.value } })} /></Field>
-      <Field label="설명" wide><Textarea value={draft.home.description} onChange={(event) => updateDraft({ home: { ...draft.home, description: event.target.value } })} /></Field>
-      <Field label="버튼 라벨"><Input value={draft.home.primaryCtaLabel} onChange={(event) => updateDraft({ home: { ...draft.home, primaryCtaLabel: event.target.value } })} /></Field>
-      <Field label="버튼 링크"><Input value={draft.home.primaryCtaHref} onChange={(event) => updateDraft({ home: { ...draft.home, primaryCtaHref: event.target.value } })} /></Field>
-      <LandingHeroImageManager home={draft.home} onChange={(home) => updateDraft({ home })} />
-    </section> : null}
-
-    {tab === "pricing" ? <section className="mt-6 rounded-2xl border bg-white p-5">
-      <Field label="가격 안내 문구"><Textarea value={draft.pricingLead} onChange={(event) => updateDraft({ pricingLead: event.target.value })} /></Field>
-      <div className="mt-6 grid gap-4">{[...draft.priceItems].sort((a, b) => a.sortOrder - b.sortOrder).map((item, index) => <article className="grid gap-3 rounded-xl border p-4 md:grid-cols-[1fr_1fr_auto]" key={item.id}><Input aria-label={`${item.name} 이름`} value={item.name} onChange={(event) => updateDraft({ priceItems: draft.priceItems.map((value) => value.id === item.id ? { ...value, name: event.target.value } : value) })} /><Input aria-label={`${item.name} 가격`} value={item.priceLabel} onChange={(event) => updateDraft({ priceItems: draft.priceItems.map((value) => value.id === item.id ? { ...value, priceLabel: event.target.value } : value) })} /><div className="flex gap-2"><Button size="sm" variant="secondary" disabled={index === 0} onClick={() => { const items = [...draft.priceItems].sort((a, b) => a.sortOrder - b.sortOrder); [items[index - 1], items[index]] = [items[index], items[index - 1]]; updateDraft({ priceItems: items.map((value, position) => ({ ...value, sortOrder: position + 1 })) }); }}>위로</Button><Button size="sm" variant={item.visible ? "primary" : "secondary"} onClick={() => updateDraft({ priceItems: draft.priceItems.map((value) => value.id === item.id ? { ...value, visible: !value.visible } : value) })}>{item.visible ? "공개" : "숨김"}</Button></div></article>)}</div>
-    </section> : null}
-
-    {tab === "settings" ? <section className="mt-6 grid gap-5 rounded-2xl border bg-white p-5 md:grid-cols-2">
-      <Field label="상호"><Input value={draft.settings.businessName} onChange={(event) => updateDraft({ settings: { ...draft.settings, businessName: event.target.value } })} /></Field>
-      <Field label="대표 CTA"><Input value={draft.settings.contactLabel} onChange={(event) => updateDraft({ settings: { ...draft.settings, contactLabel: event.target.value } })} /></Field>
-      <Field label="푸터 소개" wide><Textarea value={draft.settings.footerDescription} onChange={(event) => updateDraft({ settings: { ...draft.settings, footerDescription: event.target.value } })} /></Field>
-      <div className="md:col-span-2"><h2 className="font-bold">최근 게시 버전</h2><div className="mt-3 grid gap-2">{snapshot.versions.map((version) => <div className="flex items-center justify-between rounded-xl bg-[var(--neutral-50)] p-3 text-sm" key={version.id}><span>{new Date(version.createdAt).toLocaleString("ko-KR")}</span><Button size="sm" variant="secondary" onClick={async () => { await restoreVersion(version.id); setNotice("선택한 버전을 새 초안으로 복원했습니다."); }}>초안으로 복원</Button></div>)}</div></div>
-    </section> : null}
-  </div>;
-}
-
-function Field({ label, children, wide }: { label: string; children: React.ReactNode; wide?: boolean }) {
-  return <label className={wide ? "md:col-span-2" : ""}><span className="mb-2 block text-sm font-bold">{label}</span>{children}</label>;
+import { confirmDocumentNavigation, DocumentEditor } from "./document-editor";
+import { listAnnouncements } from "../server/actions";
+import type { ContentDocument } from "../model/documents";
+export function SiteContentAdmin({master=false}:{master?:boolean}){
+ const params=useSearchParams();const router=useRouter();const key=params.get("document")??"home";const query=params.get("noticeQ")??"";const page=Math.max(1,Number(params.get("noticePage"))||1);
+ const[announcements,setAnnouncements]=useState<ContentDocument[]>([]);const[error,setError]=useState("");const[total,setTotal]=useState(0);const[reload,setReload]=useState(0);
+ useEffect(()=>{let active=true;void listAnnouncements(query,page).then(result=>{if(!active)return;if(result.ok){setAnnouncements(result.documents);setTotal(result.total);setError("");}else setError(result.error);});return()=>{active=false;};},[query,page,reload,key]);
+ function update(field:string,value:string){if(field==="document"&&!confirmDocumentNavigation())return;const next=new URLSearchParams(params);next.set(field,value);if(field==="noticeQ")next.delete("noticePage");router.replace(`/admin/site?${next}` as never);}
+ return <div className="admin-page space-y-6"><header className="admin-page-header"><div><h1>사이트 콘텐츠</h1><p className="mt-2 text-neutral-600">각 문서는 따로 저장하고 게시합니다. 복원은 초안에만 적용됩니다.</p></div></header><nav className="admin-tabs flex flex-wrap gap-2" aria-label="콘텐츠 문서">{[["home","홈"],["about","업체 소개"],["process","작업 과정"],["faq","자주 묻는 질문"],["policy","개인정보처리방침"],["announcements","공지사항"]].map(([value,label])=><Button key={value} aria-current={key===value||(value==="announcements"&&key.startsWith("announcement:"))?"page":undefined} variant={key===value||(value==="announcements"&&key.startsWith("announcement:"))?"primary":"ghost"} onClick={()=>update("document",value)}>{label}</Button>)}</nav>{(key==="announcements"||key.startsWith("announcement:"))&&<section aria-label="공지사항 관리" className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-bold">공지사항</h2><Button onClick={()=>update("document",`announcement:${crypto.randomUUID()}`)}>공지사항 작성</Button></div>{error&&<p role="alert">{error}<Button variant="ghost" onClick={()=>setReload(value=>value+1)}>다시 시도</Button></p>}<form className="mt-3 flex gap-2" onSubmit={event=>{event.preventDefault();update("noticeQ",String(new FormData(event.currentTarget).get("q")??""));}}><Input name="q" defaultValue={query} aria-label="공지 제목 검색" placeholder="공지 제목 검색"/><Button variant="secondary">검색</Button></form><div className="mt-3 flex flex-wrap gap-2">{announcements.map(item=><Button key={item.key} variant="secondary" onClick={()=>update("document",item.key)}>{String(item.draft.title??"공지")}{item.published?"":" · 초안"}</Button>)}{announcements.length===0&&!error&&<p className="py-6 text-sm text-slate-500">{query?"검색 결과가 없습니다.":"등록된 공지사항이 없습니다."}</p>}</div><div className="mt-4 flex items-center gap-3"><Button variant="ghost" disabled={page===1} onClick={()=>update("noticePage",String(page-1))}>이전</Button><span>{page} / {Math.max(1,Math.ceil(total/20))}</span><Button variant="ghost" disabled={page*20>=total} onClick={()=>update("noticePage",String(page+1))}>다음</Button></div></section>}{key!=="announcements"&&<DocumentEditor key={key} documentKey={key} master={master}/>}</div>;
 }

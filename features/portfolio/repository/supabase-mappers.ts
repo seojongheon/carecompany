@@ -55,6 +55,7 @@ export function mapPortfolioCaseRow(row: Row): PortfolioCase {
     publishedAt: row.published_at == null ? null : text(row.published_at),
     createdAt: text(row.created_at),
     updatedAt: text(row.updated_at),
+    updatedBy: row.updated_by == null ? undefined : text(row.updated_by),
   };
 }
 

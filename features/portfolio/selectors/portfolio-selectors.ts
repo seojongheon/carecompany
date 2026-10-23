@@ -110,13 +110,17 @@ export function selectRelatedPublicCases(store: MockStoreEnvelope, caseId: strin
 export function selectAdminCases(store: MockStoreEnvelope, filter: AdminCaseFilter): AdminCaseSummary[] {
   const service = filter.serviceKey ? store.services.find(({ key }) => key === filter.serviceKey) : undefined;
   return store.cases
-    .filter((item) => filter.status === "all" || !filter.status || item.status === filter.status)
+    .filter((item) => filter.status === "draft" ? item.status === "published" && Boolean(item.hasDraft) : filter.status === "all" || !filter.status ? item.status !== "deleted" : item.status === filter.status)
     .filter((item) => !filter.serviceKey || item.serviceId === service?.id)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id))
+    .filter(item => !filter.search || `${item.title} ${item.locationDisplay}`.toLowerCase().includes(filter.search.toLowerCase()))
+    .filter(item => !filter.dateFrom || item.updatedAt.slice(0, 10) >= filter.dateFrom)
+    .filter(item => !filter.dateTo || item.updatedAt.slice(0, 10) <= filter.dateTo)
+    .sort((a, b) => (filter.sort === "published" ? (b.publishedAt ?? "").localeCompare(a.publishedAt ?? "") : b.updatedAt.localeCompare(a.updatedAt)) || a.id.localeCompare(b.id))
     .map((item) => ({
       ...item,
       service: store.services.find(({ id }) => id === item.serviceId)!,
       mediaCount: store.media.filter(({ caseId }) => caseId === item.id).length,
+      coverMedia: store.media.find(media => media.caseId === item.id && media.cover && media.uploadStatus === "ready"),
     }));
 }
 

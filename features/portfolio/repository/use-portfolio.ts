@@ -1,7 +1,8 @@
 "use client";
 
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 
+import { selectAdminSnapshot } from "../model/case-revisions";
 import { PortfolioContext } from "./portfolio-provider";
 
 export function usePortfolio() {
@@ -12,3 +13,9 @@ export function usePortfolio() {
   return context;
 }
 
+
+export function useAdminPortfolio() {
+  const context = usePortfolio();
+  const snapshot = useMemo(() => selectAdminSnapshot(context.snapshot), [context.snapshot]);
+  return { ...context, snapshot };
+}

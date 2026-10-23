@@ -34,6 +34,8 @@ export interface Service {
 }
 
 export interface PortfolioCase {
+  revision?: number;
+  hasDraft?: boolean;
   id: string;
   serviceId: string;
   slug: string;
@@ -54,6 +56,7 @@ export interface PortfolioCase {
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  updatedBy?: string | null;
 }
 
 export interface CaseMedia {
@@ -98,6 +101,8 @@ export interface Tag {
 }
 
 export interface MockStoreEnvelope {
+  drafts?: Record<string, import("./case-revisions").CaseRevision>;
+  history?: Record<string, import("./case-revisions").CaseHistory[]>;
   schemaVersion: 1;
   savedAt: string;
   services: Service[];
@@ -134,13 +139,18 @@ export interface PortfolioPage {
 }
 
 export interface AdminCaseFilter {
-  status?: CaseStatus | "all";
+  status?: CaseStatus | "all" | "draft";
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  sort?: "updated" | "published";
   serviceKey?: ServiceKey;
 }
 
 export type AdminCaseSummary = PortfolioCase & {
   service: Service;
   mediaCount: number;
+  coverMedia?: CaseMedia;
 };
 
 export type AdminCaseDetail = PortfolioCase & {
@@ -157,7 +167,7 @@ export interface CreateDraftInput {
 }
 
 export type UpdateCaseInput = Partial<
-  Omit<PortfolioCase, "id" | "createdAt" | "updatedAt" | "status" | "publishedAt">
+  Omit<PortfolioCase, "id" | "createdAt" | "updatedAt" | "updatedBy" | "status" | "publishedAt">
 >;
 
 export type PublishIssueCode =

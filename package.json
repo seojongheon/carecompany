@@ -15,7 +15,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "supabase:verify:public": "node scripts/verify-supabase-public.mjs"
+    "supabase:verify:public": "node scripts/verify-supabase-public.mjs",
+    "test:db:operations": "node scripts/verify-operations-db.mjs && node scripts/verify-inquiries-db.mjs && node scripts/verify-admin-analytics-db.mjs && node scripts/verify-data-integrity-db.mjs",
+    "test:e2e:admin": "playwright test --config=playwright.admin.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "5.2.2",
@@ -32,12 +34,15 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-hook-form": "7.71.1",
+    "server-only": "0.0.1",
+    "sharp": "0.34.5",
     "tailwind-merge": "3.4.1",
     "yet-another-react-lightbox": "3.29.1",
     "zod": "4.3.6"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.11.0",
+    "@electric-sql/pglite": "^0.5.10",
     "@esbuild/darwin-arm64": "0.28.1",
     "@next/swc-darwin-arm64": "16.2.11",
     "@playwright/test": "1.58.2",

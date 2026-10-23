@@ -1,7 +1,27 @@
-import Link from "next/link";
-import { ExternalLink, LayoutDashboard, Rows3, Settings2, Users } from "lucide-react";
+"use client";
 
-export function AdminSidebar() {
-  const links = [["/admin","대시보드",LayoutDashboard],["/admin/site","홈페이지 관리",Settings2],["/admin/portfolio","사례 관리",Rows3],["/admin/users","관리자 권한",Users]] as const;
-  return <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[var(--neutral-200)] bg-[var(--neutral-900)] p-5 text-white lg:block"><Link href="/admin" className="flex min-h-12 items-center gap-3 text-lg font-black"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--brand-600)]">위</span>관리자</Link><nav aria-label="관리자 메뉴" className="mt-10 grid gap-2">{links.map(([href,label,Glyph]) => <a className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-semibold text-white/75 hover:bg-white/10 hover:text-white" href={href} key={href}><Glyph aria-hidden="true" size={20} />{label}</a>)}</nav><Link href="/" className="absolute bottom-6 left-5 right-5 flex min-h-11 items-center gap-2 rounded-xl border border-white/15 px-3 text-sm text-white/70"><ExternalLink aria-hidden="true" size={17} />고객 화면 보기</Link></aside>;
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { BarChart3, BriefcaseBusiness, ExternalLink, FileText, House, Images, MessageSquare, Settings, Tags, Users } from "lucide-react";
+import { adminMenuForRole } from "@/lib/admin/navigation";
+import type { AuthRole } from "@/features/auth/model/types";
+
+const icons = {"/admin":House,"/admin/inquiries":MessageSquare,"/admin/portfolio":BriefcaseBusiness,"/admin/services":Tags,"/admin/site":FileText,"/admin/media":Images,"/admin/users":Users,"/admin/analytics":BarChart3,"/admin/settings":Settings};
+const groups = [{label:"개요",paths:["/admin"]},{label:"업무",paths:["/admin/inquiries","/admin/portfolio"]},{label:"콘텐츠",paths:["/admin/services","/admin/site","/admin/media"]},{label:"관리",paths:["/admin/users","/admin/analytics","/admin/settings"]}];
+
+export function AdminNavigation({role,onNavigate}:{role:AuthRole;onNavigate?:()=>void}) {
+  const pathname=usePathname()??"/admin";
+  const menu=adminMenuForRole(role);
+  return <nav aria-label="관리자 메뉴" className="admin-navigation">{groups.map(group=>{
+    const items=menu.filter(item=>group.paths.includes(item.href));
+    if(!items.length)return null;
+    return <div key={group.label} className="admin-nav-group"><p>{group.label}</p>{items.map(({href,label})=>{
+      const active=href==="/admin"?pathname===href:pathname===href||pathname.startsWith(`${href}/`);
+      const Icon=icons[href];
+      return <Link key={href} href={href} onClick={onNavigate} aria-current={active?"page":undefined} className="admin-nav-item"><Icon size={18} aria-hidden="true"/>{label}</Link>;
+    })}</div>;
+  })}<Link href="/" onClick={onNavigate} className="admin-customer-link"><ExternalLink size={17} aria-hidden="true"/>고객 화면 보기</Link></nav>;
+}
+export function AdminSidebar({role="admin"}:{role?:AuthRole}) {
+  return <aside className="admin-sidebar"><Link href="/admin" className="admin-brand"><span className="admin-brand-symbol" aria-hidden="true">위</span><span><strong>위생의 기술</strong><small>운영 관리</small></span></Link><AdminNavigation role={role}/><p className="admin-role-label">{role==="super_admin"?"최고 관리자":"관리자"} 작업 공간</p></aside>;
 }

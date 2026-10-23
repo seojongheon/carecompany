@@ -106,8 +106,8 @@ describe("admin media and publishing", () => {
     const draft = repository.listAdminCases({ status: "private" })[0];
     render(<PortfolioProvider repository={repository}><PublishChecklist caseId={draft.id} /></PortfolioProvider>);
 
-    await user.click(screen.getByRole("button", { name: "사례 삭제" }));
-    expect(screen.getByRole("dialog", { name: "사례를 삭제 상태로 바꿀까요?" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "휴지통으로 이동" }));
+    expect(screen.getByRole("dialog", { name: "사례를 휴지통으로 이동할까요?" })).toBeInTheDocument();
     expect(repository.getAdminCaseById(draft.id)).not.toBeNull();
     await user.click(screen.getByRole("button", { name: "삭제 확인" }));
     expect(repository.getAdminCaseById(draft.id)?.status).toBe("deleted");

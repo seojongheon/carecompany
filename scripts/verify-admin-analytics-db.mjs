@@ -1,0 +1,34 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+import {pgcrypto} from '@electric-sql/pglite/contrib/pgcrypto';
+const db=new PGlite({extensions:{pgcrypto},loadDataDir:new Blob([await fs.readFile('.cache/operations-db/snapshot.tar.gz')])});
+const master='10000000-0000-4000-8000-000000000001',admin='10000000-0000-4000-8000-000000000002',customer='10000000-0000-4000-8000-000000000003';
+let checks=0;
+const scalar=async(sql,params=[])=>Object.values((await db.query(sql,params)).rows[0])[0];
+const role=async(name,id='')=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false),set_config('request.jwt.claim.role',$2,false)",[id,name]);await db.exec(`set role ${name}`);};
+const same=async(sql,want,label,params=[])=>{assert.deepEqual(await scalar(sql,params),want,label);checks++;};
+const denied=async(sql,label,params=[])=>{await assert.rejects(()=>db.query(sql,params),undefined,label);checks++;};
+try{
+ await role('authenticated',master);
+ const profiles=await scalar('select public.search_admin_profiles()');assert.ok(profiles.items.length>=4);checks++;
+ await db.query('select public.set_user_admin_role($1,$2,$3,$4)',[customer,'admin',true,'integration test']);
+ await same("select count(*)::int from public.admin_activity_feed where action='member_access_changed'",1,'role history included in common audit');
+ await denied('select public.set_user_admin_role($1,$2,$3,$4)','master role changes blocked on web',[master,'admin',true,'not allowed']);
+ await db.query('select public.set_user_admin_role($1,$2,$3,$4)',[customer,'customer',true,'integration restore']);
+ await role('authenticated',customer);await same('select count(*)::int from public.admin_activity_feed',0,'customer cannot read unified audit');
+ await role('authenticated',admin);await denied('select public.search_admin_profiles()','suspended operator cannot search members');
+ await role('service_role');
+ const event={eventId:'10000000-0000-4000-8000-000000000021',visitorId:'10000000-0000-4000-8000-000000000022',sessionId:'10000000-0000-4000-8000-000000000023',path:'/pricing',referrer:'direct',device:'desktop',campaign:null,consent:true};
+ await denied('select public.record_visit_event($1,$2)','consent false rejected',[{...event,consent:false},'a'.repeat(64)]);
+ const absentConsent={...event};delete absentConsent.consent;
+ await denied('select public.record_visit_event($1,$2)','missing consent rejected',[absentConsent,'a'.repeat(64)]);
+ await denied('select public.record_visit_event($1,$2)','phone-like campaign rejected',[{...event,campaign:'01012345678'},'a'.repeat(64)]);
+ await db.query('select public.record_visit_event($1,$2)',[{...event,campaign:'naver-search'},'a'.repeat(64)]);
+ await role('postgres');await db.exec("update public.analytics_events set created_at=now()-interval '91 days'");
+ await role('service_role');await same('select public.prune_analytics_events()',2,'90-day data retention enforced');
+ await role('authenticated',master);const report=await scalar("select public.get_visit_report((now() at time zone 'Asia/Seoul')::date,(now() at time zone 'Asia/Seoul')::date)");assert.equal(report.pageViews,0);assert.ok(report.startedAt);checks+=2;
+ await denied('select public.get_visit_report(null,null)','null dates rejected');
+ await denied("select public.get_visit_report(current_date-100,current_date)",'over-90-day range rejected');
+ console.log(`PASS ${checks} admin/analytics PostgreSQL assertions (unified audit, master protection, active accounts, consent, campaign privacy, retention).`);
+}finally{await db.close();}

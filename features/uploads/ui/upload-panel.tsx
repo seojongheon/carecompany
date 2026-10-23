@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CaseMedia } from "@/features/portfolio/model/types";
-import { usePortfolio } from "@/features/portfolio/repository/use-portfolio";
+import { useAdminPortfolio as usePortfolio } from "@/features/portfolio/repository/use-portfolio";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { createStorageGateway } from "@/features/portfolio/storage/storage-gateway";
 import { SessionPreviewManager } from "../model/session-preview-manager";
@@ -16,7 +16,7 @@ import { createSerialTaskQueue } from "../model/serial-task-queue";
 import { ImageDropzone } from "./image-dropzone";
 
 export function UploadPanel({ caseId, stage }: { caseId: string; stage: CaseImageUploadStage }) {
-  const { snapshot, repository, setCaseMedia } = usePortfolio();
+  const { snapshot, repository, appendCaseMedia } = usePortfolio();
   const uploadRuntime = getUploadRuntime(repository, process.env.NEXT_PUBLIC_SUPABASE_STORAGE_ENABLED === "true");
   const storageEnabled = uploadRuntime === "supabase";
   const existing = snapshot.media.filter((item) => item.caseId === caseId);
@@ -48,7 +48,7 @@ export function UploadPanel({ caseId, stage }: { caseId: string; stage: CaseImag
       storagePath: storageFile?.reviewedPath, originalStoragePath: storageFile?.originalPath,
       sessionPreviewId: null,
     };
-    const saved = await setCaseMedia(caseId, [...latest.filter((item) => item.id !== next.id), next]);
+    const saved = await appendCaseMedia(caseId, next);
     if (!saved && storageGateway && storageFile) {
       const cleanup = await storageGateway.removeCaseFiles([{
         originalPath: storageFile.originalPath,

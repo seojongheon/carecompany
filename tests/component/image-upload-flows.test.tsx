@@ -181,7 +181,7 @@ describe("ImageDropzone", () => {
     }]);
   });
 
-  it("updates database references before deleting Storage objects", async () => {
+  it("keeps every storage object and input when draft removal fails", async () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_STORAGE_ENABLED", "true");
     vi.stubEnv("NODE_ENV", "production");
     storageGatewayMocks.removeCaseFiles.mockResolvedValue({ ok: true });
@@ -199,7 +199,7 @@ describe("ImageDropzone", () => {
     await user.click(checkbox);
     await user.click(screen.getByRole("button", { name: /선택 삭제/ }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("사진 정보를 삭제하지 못했습니다");
+    expect(await screen.findByRole("alert")).toHaveTextContent("초안에서 사진을 제거하지 못했습니다");
     expect(replaceMedia).toHaveBeenCalled();
     expect(storageGatewayMocks.removeCaseFiles).not.toHaveBeenCalled();
     expect(events).toEqual(["database"]);
@@ -216,13 +216,13 @@ describe("ImageDropzone", () => {
     const repository = new SupabasePortfolioRepository({
       loadSnapshot: vi.fn().mockResolvedValue(SEED_SNAPSHOT),
     } as never);
-    const user = userEvent.setup();
     render(<PortfolioProvider repository={repository}><PhotoManager caseId={SEED_SNAPSHOT.cases[0].id} /></PortfolioProvider>);
 
-    await user.click(await screen.findByRole("button", { name: "Storage 정리 재시도" }));
+    await screen.findAllByRole("checkbox", { name: /사진 선택/ });
+    expect(screen.queryByRole("button", { name: "Storage 정리 재시도" })).not.toBeInTheDocument();
 
     expect(storageGatewayMocks.removeCaseFiles).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert")).toHaveTextContent("Storage가 비활성 상태");
+    expect(localStorage.getItem("portfolio:pending-case-storage-cleanup:v1")).toContain("case-1/original.jpg");
   });
 
   it("previews a locally selected landing hero image and preserves its alternative text in the draft", async () => {

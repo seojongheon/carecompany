@@ -102,7 +102,7 @@ describe("LocalStoragePortfolioRepository", () => {
 
     expect(repository.consumeRecoveryNotice()).toMatch(/브라우저 저장소/);
     expect(() => repository.updateCase(before.cases[0].id, { title: "저장되면 안 됨" })).toThrow();
-    expect(repository.getSnapshot().cases[0].title).toBe("저장되면 안 됨");
+    expect(repository.getAdminCaseById(before.cases[0].id)?.title).toBe("저장되면 안 됨");
   });
 
   it("soft-deletes public content and resets every change to seed", () => {
@@ -124,9 +124,9 @@ describe("LocalStoragePortfolioRepository", () => {
 
     repository.setCaseMedia(published.id, detail.media.map((media, index) => index === 0 ? { ...media, caption: "변경된 공개 캡션" } : media));
     const changed = repository.getAdminCaseById(published.id)!;
-    expect(changed.status).toBe("private");
-    expect(changed.privacyChecklist.publicMediaReviewed).toBe(false);
-    expect(repository.getPublicCaseBySlug(published.slug)).toBeNull();
+    expect(changed.status).toBe("published");
+    expect(changed.privacyChecklist.publicMediaReviewed).toBe(true);
+    expect(repository.getPublicCaseBySlug(published.slug)?.id).toBe(published.id);
 
     repository.softDeleteCase(published.id);
     const result = repository.publishCase(published.id);

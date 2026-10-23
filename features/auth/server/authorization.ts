@@ -7,7 +7,7 @@ interface ServerAuthorizationClient {
   from(table: "profiles"): {
     select(columns: string): {
       eq(column: "id", value: string): {
-        maybeSingle(): Promise<{ data: { id: string; email: string; role: AuthRole; is_active: boolean } | null; error: unknown }>;
+        maybeSingle(): PromiseLike<{ data: { id: string; email: string; role: AuthRole; is_active: boolean } | null; error: unknown }>;
       };
     };
   };

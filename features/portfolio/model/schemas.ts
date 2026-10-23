@@ -34,6 +34,8 @@ export const ServiceSchema = z.object({
 });
 
 export const PortfolioCaseSchema = z.object({
+  revision: z.number().optional(),
+  hasDraft: z.boolean().optional(),
   id: NonEmptyText,
   serviceId: NonEmptyText,
   slug: z.string().trim().min(1).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
@@ -54,6 +56,7 @@ export const PortfolioCaseSchema = z.object({
   publishedAt: IsoDateTime.nullable(),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
+  updatedBy: z.string().nullable().optional(),
 });
 
 export const NewPortfolioCaseSchema = z.object({
@@ -83,6 +86,8 @@ export const CaseMediaSchema = z.object({
     (value) => !value.startsWith("blob:") && !value.startsWith("data:"),
     "세션 또는 인라인 이미지 주소는 저장할 수 없습니다.",
   ),
+  storagePath: z.string().optional(),
+  originalStoragePath: z.string().optional(),
   sessionPreviewId: z.null(),
 });
 
@@ -115,8 +120,12 @@ function checklistComplete(checklist: z.infer<typeof PublishChecklistSchema>) {
   return Object.values(checklist).every(Boolean);
 }
 
+const CaseManifestSchema = z.object({ case: PortfolioCaseSchema, media: z.array(CaseMediaSchema).max(69), videos: z.array(CaseVideoSchema).max(3), tagIds: z.array(z.string()) });
+const RevisionSchema = z.object({ revision: z.number(), manifest: CaseManifestSchema });
 export const MockStoreEnvelopeSchema = z
   .object({
+    drafts: z.record(z.string(), RevisionSchema).optional(),
+    history: z.record(z.string(), z.array(RevisionSchema.extend({ id: z.string(), createdAt: z.string() }))).optional(),
     schemaVersion: z.literal(1),
     savedAt: IsoDateTime,
     services: z.array(ServiceSchema).length(4),
