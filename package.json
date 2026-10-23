@@ -16,7 +16,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "supabase:verify:public": "node scripts/verify-supabase-public.mjs",
-    "test:db:operations": "node scripts/verify-operations-db.mjs && node scripts/verify-inquiries-db.mjs && node scripts/verify-admin-analytics-db.mjs",
+    "test:db:operations": "node scripts/verify-operations-db.mjs && node scripts/verify-inquiries-db.mjs && node scripts/verify-admin-analytics-db.mjs && node scripts/verify-data-integrity-db.mjs",
     "test:e2e:admin": "playwright test --config=playwright.admin.config.ts"
   },
   "dependencies": {
