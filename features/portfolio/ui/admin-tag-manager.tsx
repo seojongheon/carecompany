@@ -15,7 +15,7 @@ export function AdminTagManager() {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(tag.key) || !tag.name || !tag.serviceId || !Number.isInteger(tag.sortOrder) || tag.sortOrder < 0) { setError("서비스, 이름, 영문 소문자 키, 0 이상의 순서를 확인해 주세요."); return; }
   if (await saveTag(tag)) { setEditing(null); setError(""); target.reset(); }
  };
- return <details className="mt-6 rounded-2xl border border-[var(--neutral-200)] bg-white p-5"><summary className="min-h-11 cursor-pointer font-bold">서비스별 태그 관리</summary>
+ return <details id="case-tags" className="admin-card mt-6 rounded-2xl border border-[var(--neutral-200)] bg-white p-5"><summary className="min-h-11 cursor-pointer font-bold">서비스별 태그 관리</summary>
   <div className="my-4 flex flex-wrap gap-2">{snapshot.tags.map(tag => <Button key={tag.id} variant="secondary" size="sm" onClick={() => setEditing(tag)}>{tag.name}{tag.active ? "" : " (숨김)"}</Button>)}</div>
   <form key={editing?.id ?? "new"} onSubmit={save} className="grid gap-3 sm:grid-cols-2">
    <label>서비스<select disabled={Boolean(editing)} name="serviceId" className="admin-select" defaultValue={editing?.serviceId ?? snapshot.services[0]?.id}>{snapshot.services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>

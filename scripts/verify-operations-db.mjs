@@ -2,6 +2,7 @@ import {PGlite} from '@electric-sql/pglite';
 import {pgcrypto} from '@electric-sql/pglite/contrib/pgcrypto';
 import fs from 'node:fs/promises';
 import {verifyOperations} from './operations-db-scenarios.mjs';
+import {verifyOperationsPrivileges} from './verify-operations-privileges.mjs';
 const db=new PGlite({extensions:{pgcrypto}});
 await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create schema storage;create schema extensions;
 create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}',created_at timestamptz default now());
@@ -17,9 +18,15 @@ create function storage.extension(name text) returns text language sql immutable
 grant usage on schema public,auth,storage to anon,authenticated,service_role;
 grant select,insert,update,delete on storage.objects to anon,authenticated,service_role;
 grant select on storage.buckets to anon,authenticated,service_role;
+-- Supabase grants new public objects to API roles by default. Reproduce that
+-- baseline so missing REVOKE statements cannot hide behind empty local ACLs.
+alter default privileges in schema public grant all on tables to anon,authenticated,service_role;
+alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
+alter default privileges in schema public grant all on functions to anon,authenticated,service_role;
 `);
 const files=(await fs.readdir('supabase/migrations')).filter(f=>f.endsWith('.sql')).sort();
 for(const file of files){try{await db.exec(await fs.readFile(`supabase/migrations/${file}`,'utf8'));console.log(`PASS migration ${file}`);}catch(e){console.error(`FAIL ${file}: ${e.message}\n${e.where??''}`);await db.close();process.exit(1);}}
+await verifyOperationsPrivileges(db);
 await verifyOperations(db);
 await db.exec(await fs.readFile("supabase/tests/database/070_content_documents.test.sql","utf8"));
 console.log("PASS content SQL scenarios: scoped publication, restore, role boundaries, storage references and deletion protection.");

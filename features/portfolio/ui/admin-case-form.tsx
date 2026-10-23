@@ -1,11 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { useUnsavedChanges } from "@/lib/admin/use-unsaved-changes";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AutosaveStatus } from "@/components/admin/autosave-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,7 +48,7 @@ function valuesFor(item: PortfolioCase): FormValues {
   };
 }
 
-export function AdminCaseForm({ mode, caseId, autosaveMs = 800 }: { mode: "create" | "edit"; caseId?: string; autosaveMs?: number }) {
+export function AdminCaseForm({ mode, caseId, autosaveMs = 800, sidebar, media }: { sidebar?: ReactNode; media?: ReactNode; mode: "create" | "edit"; caseId?: string; autosaveMs?: number }) {
   const { snapshot, createDraft, updateCase, setCaseTags, mutation, clearMutationError, loading, loadError, reload, repository } = usePortfolio();
   const existing = caseId ? snapshot.cases.find(({ id }) => id === caseId) : undefined;
   const [created, setCreated] = useState(false);
@@ -108,39 +109,47 @@ export function AdminCaseForm({ mode, caseId, autosaveMs = 800 }: { mode: "creat
 
   if (loadError) return <div role="alert">{loadError}<Button onClick={mode === "edit" && existing ? loadLatest : reload}>다시 시도</Button></div>;
   if (loading) return <p role="status">사례를 불러오는 중입니다.</p>;
-  if (existing?.status === "deleted") return <h1 className="text-3xl font-black">{existing.title} · 휴지통</h1>;
+  if (existing?.status === "deleted") return <div className="grid gap-6"><AdminPageHeader title={`${existing.title} · 휴지통`} description="복원하면 비공개 초안으로 돌아갑니다." />{sidebar}</div>;
   if (mode === "edit" && !existing) return <p role="alert">사례를 찾을 수 없습니다.</p>;
-  return <form onSubmit={submit} className="mx-auto max-w-3xl">
-    <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
-      <div><p className="text-sm font-black text-[var(--brand-700)]">{mode === "create" ? "NEW PRIVATE DRAFT" : "EDIT CASE"}</p><h1 className="mt-2 text-3xl font-black">{mode === "create" ? "새 사례 만들기" : "사례 편집"}</h1></div>
-      {mode === "edit" ? <AutosaveStatus state={mutation.state} message={mutation.message} /> : null}
-    </div>
-    <div className="grid gap-6 rounded-2xl border border-[var(--neutral-200)] bg-white p-5 md:p-7">
+  return <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]"><form onSubmit={submit} className="min-w-0">
+    <AdminPageHeader title={mode === "create" ? "새 사례 만들기" : "사례 편집"} description={mode === "edit" ? `${existing?.title} · ${existing?.status === "published" ? "게시 중" : "비공개 초안"}${existing?.hasDraft ? " · 변경 초안 있음" : ""}` : "기본 정보를 입력해 비공개 초안을 만드세요."} actions={mode === "edit" ? <div className="flex flex-wrap items-center gap-3"><AutosaveStatus state={mutation.state} message={mutation.message} />{sidebar ? <Button asChild><a href="#case-review">게시 검토</a></Button> : null}</div> : undefined} />
+    {mode === "edit" ? <nav aria-label="사례 편집 영역" className="admin-tabs mb-5 flex flex-wrap gap-2">{[["basic", "기본 정보"], ["work-section", "작업 내용"], ["photos", "사진"], ["videos", "영상"], ["exposure", "분류·노출"], ["seo", "검색 미리보기"]].map(([id, label]) => <a key={id} href={`#case-${id}`} className="inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-semibold text-[var(--brand-700)] hover:bg-blue-50">{label}</a>)}</nav> : null}
+    <div className="grid gap-5">
+      <section id="case-basic" className="admin-card grid scroll-mt-6 gap-5 rounded-2xl border border-[var(--neutral-200)] bg-white p-5"><h2 className="text-xl font-bold">기본 정보</h2>
       <Field label="사례 제목" error={error("title")}><Input id="case-title" aria-invalid={Boolean(error("title"))} {...form.register("title")} /></Field>
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="서비스" error={error("serviceId")}><select id="case-service" className="admin-select" aria-invalid={Boolean(error("serviceId"))} {...form.register("serviceId")}><option value="">선택하세요</option>{snapshot.services.map((service) => <option value={service.id} key={service.id}>{service.name}</option>)}</select></Field>
         <Field label="표시 지역" error={error("locationDisplay")}><Input id="case-location" placeholder="예: 천안 서북구" {...form.register("locationDisplay")} /></Field>
       </div>
       {mode === "edit" ? <>
-        <Field label="자동 생성된 사례 주소"><Input id="case-slug" value={`/portfolio/${existing?.slug ?? ""}`} readOnly className="bg-[var(--neutral-50)] text-[var(--neutral-600)]" /></Field>
         <div className="grid gap-5 sm:grid-cols-2"><Field label="작업 날짜"><Input id="case-work-date" type="date" {...form.register("workDate")} /></Field><Field label="고객 표시 시기"><Input id="case-display-period" placeholder="예: 2026년 7월" {...form.register("displayPeriod")} /></Field></div>
+        <Field label="공간 유형"><Input id="case-space" {...form.register("spaceType")} /></Field>
+      </> : null}
+      </section>
+      {mode === "edit" ? <>
+        <section id="case-exposure" className="admin-card grid scroll-mt-6 gap-5 rounded-2xl border border-[var(--neutral-200)] bg-white p-5"><h2 className="text-xl font-bold">분류·노출</h2>
+        <Field label="자동 생성된 사례 주소"><Input id="case-slug" value={`/portfolio/${existing?.slug ?? ""}`} readOnly className="bg-[var(--neutral-50)] text-[var(--neutral-600)]" /></Field>
         <Field label="대표 사례 순위" error={error("featuredRank")}><Input id="case-featured-rank" type="number" min="1" placeholder="비워 두면 일반 정렬" {...form.register("featuredRank")} /></Field>
         <fieldset><legend className="font-semibold">주요 태그</legend><div className="mt-2 flex flex-wrap gap-2">{availableTags.map((tag) => <label className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--neutral-200)] px-3" key={tag.id}><input type="checkbox" checked={selectedTagIds.includes(tag.id)} onChange={(event) => toggleTag(tag.id, event.target.checked)} />{tag.name}</label>)}</div></fieldset>
+        </section>
+        <section id="case-work-section" className="admin-card grid scroll-mt-6 gap-5 rounded-2xl border border-[var(--neutral-200)] bg-white p-5"><h2 className="text-xl font-bold">작업 내용</h2>
         <Field label="요약"><Textarea id="case-summary" {...form.register("summary")} /></Field>
-        <Field label="공간 유형"><Input id="case-space" {...form.register("spaceType")} /></Field>
         <Field label="작업 전 상태"><Textarea id="case-problem" {...form.register("problemDescription")} /></Field>
         <Field label="작업 내용"><Textarea id="case-work" {...form.register("workDescription")} /></Field>
         <Field label="작업 결과"><Textarea id="case-result" {...form.register("resultDescription")} /></Field>
+        </section>
+        <section id="case-seo" className="admin-card grid scroll-mt-6 gap-5 rounded-2xl border border-[var(--neutral-200)] bg-white p-5"><h2 className="text-xl font-bold">검색 미리보기</h2>
         <Field label="SEO 제목" error={error("seoTitle")}><Input id="case-seo-title" {...form.register("seoTitle")} /></Field>
         <Field label="SEO 설명" error={error("seoDescription")}><Textarea id="case-seo-description" {...form.register("seoDescription")} /></Field>
         <div className="rounded-xl bg-slate-50 p-4"><h2 className="font-bold">검색 결과 미리보기</h2><p className="mt-2 text-lg text-blue-800">{watchedValues.seoTitle || watchedValues.title}</p><p className="text-sm">/portfolio/{existing?.slug}</p><p className="mt-1 text-sm text-slate-600">{watchedValues.seoDescription || watchedValues.summary}</p></div>
+        </section>
       </> : null}
-      <div className="sticky bottom-0 -mx-5 -mb-5 flex items-center justify-between border-t border-[var(--neutral-200)] bg-white/95 p-4 backdrop-blur md:-mx-7 md:-mb-7"><p className="text-sm text-[var(--neutral-500)]">{existing?.status === "published" ? "수정은 초안으로 저장되며 재공개할 때 반영됩니다." : "처음에는 고객에게 보이지 않는 비공개 상태입니다."}</p><Button type="submit" disabled={form.formState.isSubmitting || mutation.state === "saving"}>{mode === "create" ? "비공개 초안 만들기" : "지금 저장"}</Button></div>
+      <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--neutral-200)] bg-white/95 p-4 backdrop-blur"><p className="text-sm text-[var(--neutral-500)]">{existing?.status === "published" ? "수정은 초안으로 저장되며 재공개할 때 반영됩니다." : "처음에는 고객에게 보이지 않는 비공개 상태입니다."}</p><Button type="submit" disabled={form.formState.isSubmitting || mutation.state === "saving"}>{mode === "create" ? "비공개 초안 만들기" : "지금 저장"}</Button></div>
     </div>
     {mutation.state === "failed" ? <div role="alert" className="mt-4 rounded-xl bg-red-50 p-4">{mutation.message}<Button type="button" variant="secondary" onClick={loadLatest}>최신 버전 불러오기</Button></div> : null}
     {comparison ? <section className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4"><h2 className="font-bold">최신 저장 내용과 내 입력 비교</h2><dl className="mt-3 grid gap-3">{(Object.keys(comparison) as Array<keyof FormValues>).filter(key => comparison[key] !== watchedValues[key]).map(key => <div key={key}><dt className="font-semibold">{fieldNames[key]}</dt><dd className="whitespace-pre-wrap text-sm">최신 저장: {comparison[key] || "비어 있음"}</dd><dd className="whitespace-pre-wrap text-sm">내 입력: {watchedValues[key] || "비어 있음"}</dd></div>)}</dl><div className="mt-3 flex flex-wrap gap-2"><Button type="button" variant="secondary" disabled={mutation.state === "saving"} onClick={() => { form.reset(comparison); setLastSaved(formSignature(comparison)); setComparison(null); clearMutationError(); }}>최신 내용으로 입력 바꾸기</Button><Button type="submit" disabled={form.formState.isSubmitting || mutation.state === "saving"}>내 입력 다시 저장</Button></div></section> : null}
     {created ? <p role="status" className="mt-4 rounded-xl bg-green-50 p-4 font-semibold text-green-800">비공개 초안을 만들었습니다. 사례 목록에서 계속 편집할 수 있습니다.</p> : null}
-  </form>;
+  </form>{sidebar ? <aside className="min-w-0 xl:pt-28">{sidebar}</aside> : null}{media ? <div className="min-w-0 xl:col-start-1">{media}</div> : null}</div>;
 }
 
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactElement<{ id?: string }> }) {
